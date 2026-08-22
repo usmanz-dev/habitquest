@@ -59,8 +59,9 @@ class LevelingService {
   }
 
   /// Which of the 5 avatar stages should display for [level]. [premiumUnlocked]
-  /// is the Rewarded-Ad flag from §10 — not implemented yet, so callers that
-  /// don't have it should just omit it and get the level-based stage.
+  /// is [UserProgress.premiumAvatarUnlocked] (set via the Shop's Rewarded-Ad
+  /// unlock, §10) — callers without it on hand should just omit it and get
+  /// the level-based stage.
   static AvatarStage stageForLevel(int level, {bool premiumUnlocked = false}) {
     if (premiumUnlocked) return AvatarStage.goldenPhoenix;
     if (level >= 30) return AvatarStage.cyberMage;

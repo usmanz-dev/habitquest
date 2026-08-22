@@ -17,7 +17,6 @@ import 'day_complete_screen.dart';
 import 'progress_screen.dart';
 import 'settings_screen.dart';
 import 'shop_screen.dart';
-import 'theme_demo_screen.dart';
 
 /// Main dashboard (HabitQuest_PRD.md §7 screen 5): avatar, XP/gold/streak,
 /// and today's habit checklist pulled live from Isar (§3 core daily loop).
@@ -83,13 +82,6 @@ class HomeScreen extends ConsumerWidget {
             icon: const Icon(Icons.timeline_rounded),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const ProgressScreen()),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Design system (dev)',
-            icon: const Icon(Icons.palette_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ThemeDemoScreen()),
             ),
           ),
           IconButton(
