@@ -1,0 +1,108 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Local habit reminders (HabitQuest_PRD.md §8) via flutter_local_notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <application
+        android:label="habitquest"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <!-- No MAIN/LAUNCHER intent-filter here on purpose — the 4
+                 activity-aliases below own the launcher entry (one at a
+                 time) so the home-screen icon can switch (PRD §9). Putting
+                 it here too would show a 5th, un-switchable icon. -->
+        </activity>
+
+        <!-- Dynamic app icon (HabitQuest_PRD.md §9) — 4 activity-aliases,
+             all targeting MainActivity, each with its own launcher icon.
+             Exactly one is enabled at a time; AppIconService flips that via
+             PackageManager.setComponentEnabledSetting. icon_neutral starts
+             enabled since it's the default/first-run state. -->
+        <activity-alias
+            android:name=".IconNeutral"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_neutral"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconHappy"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_happy"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconSad"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_sad"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconAngry"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher_angry"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+        <!-- HabitQuest's live AdMob App ID (PRD §10). Required by
+             google_mobile_ads at startup or the app crashes
+             (MobileAdsInitProvider). Google's public test App ID, safe to
+             swap in anytime for development:
+             ca-app-pub-3940256099942544~3347511713 -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-2251790822906209~8339829442" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
