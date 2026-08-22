@@ -8,6 +8,7 @@ import '../models/habit.dart';
 import '../screens/add_edit_habit_screen.dart';
 import '../services/notification_service.dart';
 import '../services/providers.dart';
+import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/rewards.dart';
 import 'glass_card.dart';
@@ -15,8 +16,8 @@ import 'glass_card.dart';
 /// One row of the Home Screen's today checklist (HabitQuest_PRD.md §7
 /// screen 5). Renders a check control appropriate to [Habit.trackingType]
 /// and, on completion, writes rewards to Isar, bounces the card
-/// (§5.4 "Habit Checked" animation spec: CurvedAnimation + Curves.elasticOut)
-/// and fires a light haptic.
+/// (§5.4 "Habit Checked" animation spec: CurvedAnimation + Curves.elasticOut),
+/// and fires a light haptic + sound effect.
 class HabitCard extends ConsumerStatefulWidget {
   const HabitCard({super.key, required this.habit});
 
@@ -91,6 +92,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
 
     _playBounce();
     HapticFeedback.lightImpact();
+    SoundService.instance.play(AppSound.habitCheck);
 
     final todayHabits = ref.read(todayHabitsProvider);
     if (todayHabits.isNotEmpty &&

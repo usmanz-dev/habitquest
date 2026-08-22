@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/ad_service.dart';
 import '../services/providers.dart';
+import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
 
 /// Day Complete celebration (HabitQuest_PRD.md §3, §7 screen 13) — shown
@@ -22,6 +23,7 @@ class _DayCompleteScreenState extends ConsumerState<DayCompleteScreen> {
   void initState() {
     super.initState();
     HapticFeedback.heavyImpact();
+    SoundService.instance.play(AppSound.dayComplete);
     AdService.instance.showInterstitialOnDayComplete();
   }
 

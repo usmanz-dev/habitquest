@@ -1,8 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persisted app-level preferences (HabitQuest_PRD.md §7 screen 14).
-/// [soundEnabled] has nothing to play into yet — sound effects are deferred
-/// — but the toggle still persists so it's ready once they land.
+/// [soundEnabled] gates every [SoundService] call — off mutes all 4
+/// gamification sound effects.
 class SettingsService {
   SettingsService._();
 

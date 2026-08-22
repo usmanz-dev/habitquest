@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/leveling_service.dart';
+import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
 
 /// Full-screen "avatar evolved" celebration (HabitQuest_PRD.md §5.4 "Level
@@ -28,9 +29,8 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
   @override
   void initState() {
     super.initState();
-    // No sound effects yet (§5.4 also calls for one) — haptic carries the
-    // celebration on its own for now.
     HapticFeedback.heavyImpact();
+    SoundService.instance.play(AppSound.levelUp);
     _flashController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),

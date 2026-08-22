@@ -112,7 +112,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _SwitchRow(
                     icon: Icons.volume_up_outlined,
                     label: 'Sound Effects',
-                    subtitle: 'Coming soon',
+                    subtitle: 'Habit check, level up & more',
                     value: settings.soundEnabled,
                     onChanged: (value) =>
                         ref.read(settingsProvider.notifier).setSoundEnabled(value),

@@ -47,6 +47,7 @@ dependencies:
   shared_preferences: ^2.5.5
   in_app_review: ^2.0.12
   workmanager: ^0.10.9
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -74,6 +75,7 @@ flutter:
 
   assets:
     - assets/images/avatars/
+    - assets/sounds/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

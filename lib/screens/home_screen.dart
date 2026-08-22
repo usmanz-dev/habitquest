@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/leveling_service.dart';
 import '../services/providers.dart';
+import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_display.dart';
 import '../widgets/banner_ad_widget.dart';
@@ -56,6 +57,7 @@ class HomeScreen extends ConsumerWidget {
     // Fires once when a missed day puts the streak at risk (§7 screen 12).
     ref.listen<bool>(streakAtRiskProvider, (previous, atRisk) {
       if (!atRisk || previous == true) return;
+      SoundService.instance.play(AppSound.habitMissed);
       showDialog<void>(
         context: context,
         builder: (_) => const StreakFreezeModal(),
