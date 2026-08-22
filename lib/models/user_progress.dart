@@ -18,4 +18,10 @@ class UserProgress {
   /// Golden Phoenix unlock (HabitQuest_PRD.md §5.3/§10) — earned via
   /// Rewarded Ad in the Shop, not by leveling.
   bool premiumAvatarUnlocked = false;
+
+  /// Cosmetic ids purchased in the Shop (HabitQuest_PRD.md §7 screen 11) —
+  /// see ShopScreen's `_kShopItems` for the id list. All owned cosmetics
+  /// render simultaneously (they're independent visual layers, not
+  /// mutually exclusive skins), so there's no separate "equipped" state.
+  List<String> ownedCosmeticIds = [];
 }

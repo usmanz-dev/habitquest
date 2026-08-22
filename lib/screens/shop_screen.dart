@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/cosmetics.dart';
 import '../services/ad_service.dart';
 import '../services/leveling_service.dart';
 import '../services/providers.dart';
@@ -10,26 +11,33 @@ import '../widgets/glass_card.dart';
 
 class _ShopItem {
   const _ShopItem({
+    required this.id,
     required this.name,
     required this.description,
     required this.cost,
     required this.emoji,
   });
 
+  final String id;
   final String name;
   final String description;
   final int cost;
   final String emoji;
 }
 
-/// Placeholder cosmetics (HabitQuest_PRD.md §7 screen 11) — not yet backed
-/// by their own Isar collection, so "owned" only tracks for this session.
+/// Cosmetics (HabitQuest_PRD.md §7 screen 11) — ownership persists in
+/// [UserProgress.ownedCosmeticIds] and every owned effect actually renders:
+/// `neon_trail`/`golden_frame`/`rainbow_glow` on [AvatarDisplay] (Home +
+/// Avatar Profile), `confetti_burst` on [HabitCard] check-off, and
+/// `starry_backdrop` behind the Avatar Profile's avatar. These ids are the
+/// single source of truth other widgets key off of — keep them in sync if
+/// you rename/add an item.
 const List<_ShopItem> _kShopItems = [
-  _ShopItem(name: 'Neon Trail', description: 'A glowing trail behind your avatar', cost: 50, emoji: '✨'),
-  _ShopItem(name: 'Golden Frame', description: 'A shimmering ring around your avatar', cost: 80, emoji: '🖼️'),
-  _ShopItem(name: 'Confetti Burst', description: 'Extra confetti on habit completion', cost: 40, emoji: '🎉'),
-  _ShopItem(name: 'Starry Backdrop', description: 'A cosmic background for your profile', cost: 60, emoji: '🌌'),
-  _ShopItem(name: 'Rainbow Glow', description: 'Cycles the avatar glow through colors', cost: 100, emoji: '🌈'),
+  _ShopItem(id: CosmeticIds.neonTrail, name: 'Neon Trail', description: 'A glowing trail behind your avatar', cost: 50, emoji: '✨'),
+  _ShopItem(id: CosmeticIds.goldenFrame, name: 'Golden Frame', description: 'A shimmering ring around your avatar', cost: 80, emoji: '🖼️'),
+  _ShopItem(id: CosmeticIds.confettiBurst, name: 'Confetti Burst', description: 'Extra confetti on habit completion', cost: 40, emoji: '🎉'),
+  _ShopItem(id: CosmeticIds.starryBackdrop, name: 'Starry Backdrop', description: 'A cosmic background for your profile', cost: 60, emoji: '🌌'),
+  _ShopItem(id: CosmeticIds.rainbowGlow, name: 'Rainbow Glow', description: 'Cycles the avatar glow through colors', cost: 100, emoji: '🌈'),
 ];
 
 /// Shop/Rewards Screen (HabitQuest_PRD.md §7 screen 11): spend Gold on
@@ -42,16 +50,15 @@ class ShopScreen extends ConsumerStatefulWidget {
 }
 
 class _ShopScreenState extends ConsumerState<ShopScreen> {
-  final Set<String> _purchasedThisSession = {};
   bool _unlockingPremium = false;
 
   Future<void> _buy(_ShopItem item) async {
-    final success = await ref.read(userProgressProvider.notifier).spendGold(item.cost);
+    final success =
+        await ref.read(userProgressProvider.notifier).purchaseCosmetic(item.id, item.cost);
     if (!mounted) return;
 
     if (success) {
       HapticFeedback.lightImpact();
-      setState(() => _purchasedThisSession.add(item.name));
     } else {
       HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,7 +126,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             for (final item in _kShopItems) ...[
               _ShopItemCard(
                 item: item,
-                owned: _purchasedThisSession.contains(item.name),
+                owned: progress.ownedCosmeticIds.contains(item.id),
                 canAfford: progress.totalGold >= item.cost,
                 onBuy: () => _buy(item),
               ),

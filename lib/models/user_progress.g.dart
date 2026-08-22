@@ -37,18 +37,23 @@ const UserProgressSchema = CollectionSchema(
       name: r'longestStreak',
       type: IsarType.long,
     ),
-    r'premiumAvatarUnlocked': PropertySchema(
+    r'ownedCosmeticIds': PropertySchema(
       id: 4,
+      name: r'ownedCosmeticIds',
+      type: IsarType.stringList,
+    ),
+    r'premiumAvatarUnlocked': PropertySchema(
+      id: 5,
       name: r'premiumAvatarUnlocked',
       type: IsarType.bool,
     ),
     r'totalGold': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'totalGold',
       type: IsarType.long,
     ),
     r'totalXP': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'totalXP',
       type: IsarType.long,
     )
@@ -73,6 +78,13 @@ int _userProgressEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.ownedCosmeticIds.length * 3;
+  {
+    for (var i = 0; i < object.ownedCosmeticIds.length; i++) {
+      final value = object.ownedCosmeticIds[i];
+      bytesCount += value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -86,9 +98,10 @@ void _userProgressSerialize(
   writer.writeLong(offsets[1], object.currentHP);
   writer.writeLong(offsets[2], object.currentStreak);
   writer.writeLong(offsets[3], object.longestStreak);
-  writer.writeBool(offsets[4], object.premiumAvatarUnlocked);
-  writer.writeLong(offsets[5], object.totalGold);
-  writer.writeLong(offsets[6], object.totalXP);
+  writer.writeStringList(offsets[4], object.ownedCosmeticIds);
+  writer.writeBool(offsets[5], object.premiumAvatarUnlocked);
+  writer.writeLong(offsets[6], object.totalGold);
+  writer.writeLong(offsets[7], object.totalXP);
 }
 
 UserProgress _userProgressDeserialize(
@@ -103,9 +116,10 @@ UserProgress _userProgressDeserialize(
   object.currentStreak = reader.readLong(offsets[2]);
   object.id = id;
   object.longestStreak = reader.readLong(offsets[3]);
-  object.premiumAvatarUnlocked = reader.readBool(offsets[4]);
-  object.totalGold = reader.readLong(offsets[5]);
-  object.totalXP = reader.readLong(offsets[6]);
+  object.ownedCosmeticIds = reader.readStringList(offsets[4]) ?? [];
+  object.premiumAvatarUnlocked = reader.readBool(offsets[5]);
+  object.totalGold = reader.readLong(offsets[6]);
+  object.totalXP = reader.readLong(offsets[7]);
   return object;
 }
 
@@ -125,10 +139,12 @@ P _userProgressDeserializeProp<P>(
     case 3:
       return (reader.readLong(offset)) as P;
     case 4:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 5:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 6:
+      return (reader.readLong(offset)) as P;
+    case 7:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -507,6 +523,233 @@ extension UserProgressQueryFilter
   }
 
   QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'ownedCosmeticIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'ownedCosmeticIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'ownedCosmeticIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'ownedCosmeticIds',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'ownedCosmeticIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'ownedCosmeticIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementContains(String value,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'ownedCosmeticIds',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementMatches(String pattern,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'ownedCosmeticIds',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'ownedCosmeticIds',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'ownedCosmeticIds',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'ownedCosmeticIds',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'ownedCosmeticIds',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'ownedCosmeticIds',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'ownedCosmeticIds',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'ownedCosmeticIds',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
+      ownedCosmeticIdsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'ownedCosmeticIds',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QAfterFilterCondition>
       premiumAvatarUnlockedEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -863,6 +1106,13 @@ extension UserProgressQueryWhereDistinct
   }
 
   QueryBuilder<UserProgress, UserProgress, QDistinct>
+      distinctByOwnedCosmeticIds() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'ownedCosmeticIds');
+    });
+  }
+
+  QueryBuilder<UserProgress, UserProgress, QDistinct>
       distinctByPremiumAvatarUnlocked() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'premiumAvatarUnlocked');
@@ -912,6 +1162,13 @@ extension UserProgressQueryProperty
   QueryBuilder<UserProgress, int, QQueryOperations> longestStreakProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'longestStreak');
+    });
+  }
+
+  QueryBuilder<UserProgress, List<String>, QQueryOperations>
+      ownedCosmeticIdsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'ownedCosmeticIds');
     });
   }
 

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'database/isar_service.dart';
-import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 import 'services/ad_service.dart';
 import 'services/app_icon_service.dart';
 import 'services/background_tasks.dart';
@@ -46,7 +46,7 @@ class HabitQuestApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       navigatorKey: NotificationService.navigatorKey,
       theme: AppTheme.darkTheme,
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }

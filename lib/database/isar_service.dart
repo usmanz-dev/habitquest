@@ -210,6 +210,22 @@ class IsarService {
     return true;
   }
 
+  /// Buys a Shop cosmetic (HabitQuest_PRD.md §7 screen 11): deducts [cost]
+  /// gold and records [cosmeticId] as owned in one write. Returns false,
+  /// leaving state untouched, if the balance is too low or it's already
+  /// owned (no double-charging on a duplicate tap).
+  Future<bool> purchaseCosmetic(String cosmeticId, int cost) async {
+    final progress = await getUserProgress();
+    if (progress.ownedCosmeticIds.contains(cosmeticId)) return false;
+    if (progress.totalGold < cost) return false;
+    progress.totalGold -= cost;
+    progress.ownedCosmeticIds = [...progress.ownedCosmeticIds, cosmeticId];
+    await db.writeTxn(() async {
+      await _userProgress.put(progress);
+    });
+    return true;
+  }
+
   /// Unlocks the Golden Phoenix avatar stage after a successful Rewarded Ad
   /// (HabitQuest_PRD.md §5.3, §10).
   Future<UserProgress> unlockPremiumAvatar() async {

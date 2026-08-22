@@ -116,7 +116,11 @@ class HomeScreen extends ConsumerWidget {
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const AvatarProfileScreen()),
                       ),
-                      child: AvatarDisplay(level: levelInfo.level, stage: levelInfo.stage),
+                      child: AvatarDisplay(
+                        level: levelInfo.level,
+                        stage: levelInfo.stage,
+                        ownedCosmetics: progress.ownedCosmeticIds.toSet(),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     StatsBar(

@@ -1,9 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/cosmetics.dart';
 import '../services/leveling_service.dart';
 import '../services/providers.dart';
 import '../theme/app_theme.dart';
+import '../widgets/avatar_display.dart';
 import '../widgets/glass_card.dart';
 
 /// Avatar Profile Screen (HabitQuest_PRD.md §7 screen 8): large avatar,
@@ -32,32 +36,17 @@ class AvatarProfileScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
           children: [
             Center(
-              child: Container(
-                width: 220,
-                height: 220,
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  gradient: AppGradients.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.purpleStart.withValues(alpha: 0.45),
-                      blurRadius: 56,
-                      spreadRadius: 6,
-                    ),
-                  ],
-                ),
-                child: Image.asset(levelInfo.stage.assetPath, fit: BoxFit.contain),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: Text('Level ${levelInfo.level}', style: AppTypography.displayLarge),
-            ),
-            Center(
-              child: Text(
-                levelInfo.stage.displayName,
-                style: AppTypography.headingMedium.copyWith(color: AppColors.purpleEnd),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (progress.ownedCosmeticIds.contains(CosmeticIds.starryBackdrop))
+                    const _StarryBackdrop(),
+                  AvatarDisplay(
+                    level: levelInfo.level,
+                    stage: levelInfo.stage,
+                    ownedCosmetics: progress.ownedCosmeticIds.toSet(),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 28),
@@ -174,6 +163,86 @@ _NextUnlock? _nextUnlock(AvatarStage stage, int totalXp) {
     case AvatarStage.goldenPhoenix:
       return null;
   }
+}
+
+/// Starry Backdrop cosmetic (HabitQuest_PRD.md §7 screen 11): a small
+/// twinkling starfield behind the avatar, seeded once so stars don't jump
+/// position on rebuild.
+class _StarryBackdrop extends StatefulWidget {
+  const _StarryBackdrop();
+
+  @override
+  State<_StarryBackdrop> createState() => _StarryBackdropState();
+}
+
+class _StarryBackdropState extends State<_StarryBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final List<Offset> _starPositions;
+  late final List<double> _starPhases;
+
+  static const int _starCount = 18;
+  static const double _fieldSize = 260;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+
+    final random = math.Random(42); // fixed seed — stable star field
+    _starPositions = List.generate(
+      _starCount,
+      (_) => Offset(random.nextDouble() * _fieldSize, random.nextDouble() * _fieldSize),
+    );
+    _starPhases = List.generate(_starCount, (_) => random.nextDouble());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) => CustomPaint(
+          size: const Size(_fieldSize, _fieldSize),
+          painter: _StarFieldPainter(
+            positions: _starPositions,
+            phases: _starPhases,
+            progress: _controller.value,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StarFieldPainter extends CustomPainter {
+  _StarFieldPainter({required this.positions, required this.phases, required this.progress});
+
+  final List<Offset> positions;
+  final List<double> phases;
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white;
+    for (var i = 0; i < positions.length; i++) {
+      final twinkle = (math.sin((progress + phases[i]) * 2 * math.pi) + 1) / 2;
+      paint.color = Colors.white.withValues(alpha: 0.15 + twinkle * 0.55);
+      canvas.drawCircle(positions[i], 1.2 + twinkle * 1.2, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StarFieldPainter oldDelegate) => oldDelegate.progress != progress;
 }
 
 class _AvatarGalleryTile extends StatelessWidget {

@@ -63,6 +63,14 @@ class UserProgressNotifier extends StateNotifier<UserProgress> {
     state = await _db.unlockPremiumAvatar();
   }
 
+  /// Shop cosmetic purchase (HabitQuest_PRD.md §7 screen 11). Returns false,
+  /// leaving state untouched, if unaffordable or already owned.
+  Future<bool> purchaseCosmetic(String cosmeticId, int cost) async {
+    final success = await _db.purchaseCosmetic(cosmeticId, cost);
+    if (success) state = await _db.getUserProgress();
+    return success;
+  }
+
   Future<void> resetStreak() async {
     state = await _db.resetStreak();
   }

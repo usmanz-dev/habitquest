@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:math' as math;
+
+import '../data/cosmetics.dart';
 import '../models/habit.dart';
 import '../screens/add_edit_habit_screen.dart';
 import '../services/notification_service.dart';
@@ -28,12 +31,14 @@ class HabitCard extends ConsumerStatefulWidget {
 }
 
 class _HabitCardState extends ConsumerState<HabitCard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _bounceController;
   late final Animation<double> _scaleAnimation;
+  late final AnimationController _confettiController;
 
   Timer? _countdownTimer;
   int? _remainingSeconds;
+  bool _showConfetti = false;
   final TextEditingController _valueController = TextEditingController();
 
   @override
@@ -46,11 +51,16 @@ class _HabitCardState extends ConsumerState<HabitCard>
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
     );
+    _confettiController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
   }
 
   @override
   void dispose() {
     _bounceController.dispose();
+    _confettiController.dispose();
     _countdownTimer?.cancel();
     _valueController.dispose();
     super.dispose();
@@ -58,6 +68,18 @@ class _HabitCardState extends ConsumerState<HabitCard>
 
   void _playBounce() {
     _bounceController.forward(from: 0).then((_) => _bounceController.reverse());
+  }
+
+  /// Confetti Burst cosmetic (HabitQuest_PRD.md §7 screen 11) — plays once
+  /// over the card, then removes itself; a no-op if not owned.
+  void _maybePlayConfetti() {
+    if (!ref.read(userProgressProvider).ownedCosmeticIds.contains(CosmeticIds.confettiBurst)) {
+      return;
+    }
+    setState(() => _showConfetti = true);
+    _confettiController.forward(from: 0).whenComplete(() {
+      if (mounted) setState(() => _showConfetti = false);
+    });
   }
 
   /// Writes today's log and, if this completes the habit, applies rewards,
@@ -93,6 +115,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
     _playBounce();
     HapticFeedback.lightImpact();
     SoundService.instance.play(AppSound.habitCheck);
+    _maybePlayConfetti();
 
     final todayHabits = ref.read(todayHabitsProvider);
     if (todayHabits.isNotEmpty &&
@@ -172,49 +195,108 @@ class _HabitCardState extends ConsumerState<HabitCard>
         ),
     };
 
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: GlassCard(
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-              ),
-              child: Text(widget.habit.icon, style: const TextStyle(fontSize: 20)),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ScaleTransition(
+          scale: _scaleAnimation,
+          child: GlassCard(
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(widget.habit.icon, style: const TextStyle(fontSize: 20)),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    widget.habit.name,
+                    style: AppTypography.headingMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                control,
+                IconButton(
+                  tooltip: 'Edit habit',
+                  iconSize: 18,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  icon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AddEditHabitScreen(existingHabit: widget.habit),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                widget.habit.name,
-                style: AppTypography.headingMedium,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            control,
-            IconButton(
-              tooltip: 'Edit habit',
-              iconSize: 18,
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              icon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => AddEditHabitScreen(existingHabit: widget.habit),
+          ),
+        ),
+        if (_showConfetti)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _confettiController,
+                builder: (context, _) => CustomPaint(
+                  painter: _ConfettiPainter(progress: _confettiController.value),
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
+}
+
+/// Confetti Burst cosmetic effect (HabitQuest_PRD.md §7 screen 11) — a
+/// handful of colored squares flying outward from the card's center and
+/// fading, over [_HabitCardState._confettiController]'s 800ms run.
+class _ConfettiPainter extends CustomPainter {
+  _ConfettiPainter({required this.progress});
+
+  final double progress;
+
+  static const List<Color> _colors = [
+    AppColors.purpleStart,
+    AppColors.amberStart,
+    AppColors.successStart,
+    AppColors.dangerStart,
+    Colors.white,
+  ];
+  static const int _particleCount = 14;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final paint = Paint();
+    final random = math.Random(7); // fixed seed — consistent burst shape
+
+    for (var i = 0; i < _particleCount; i++) {
+      final angle = random.nextDouble() * 2 * math.pi;
+      final speed = 40 + random.nextDouble() * 60;
+      final distance = progress * speed;
+      final offset = center + Offset(math.cos(angle), math.sin(angle)) * distance;
+      final opacity = (1 - progress).clamp(0.0, 1.0);
+
+      paint.color = _colors[i % _colors.length].withValues(alpha: opacity);
+      canvas.save();
+      canvas.translate(offset.dx, offset.dy);
+      canvas.rotate(progress * 2 * math.pi);
+      canvas.drawRect(const Rect.fromLTWH(-3, -3, 6, 6), paint);
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) => oldDelegate.progress != progress;
 }
 
 class _DoneChip extends StatelessWidget {
