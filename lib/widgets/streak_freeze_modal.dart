@@ -95,6 +95,7 @@ class _StreakFreezeModalState extends ConsumerState<StreakFreezeModal> {
                 label: Text(_working ? 'Loading ad…' : 'Watch Ad to Freeze Streak'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.purpleStart,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.card),

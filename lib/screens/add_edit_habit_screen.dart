@@ -34,12 +34,15 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _targetValueController;
 
+  late final TextEditingController _durationCountController;
+
   late TrackingType _trackingType;
   late FrequencyType _frequencyType;
   late HabitCategory _category;
   late String _icon;
   late Set<int> _specificDays;
   late List<String> _reminderTimes;
+  late DurationUnit _durationUnit;
 
   bool _saving = false;
   String? _daysError;
@@ -55,6 +58,10 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
     _icon = h?.icon ?? _kEmojiOptions.first;
     _specificDays = (h?.specificDays ?? const <int>[]).toSet();
     _reminderTimes = List.of(h?.reminderTimes ?? const <String>[]);
+    _durationUnit = h?.durationUnit ?? DurationUnit.days;
+    _durationCountController = TextEditingController(
+      text: h?.durationCount != null ? '${h!.durationCount}' : '',
+    );
     _targetValueController = TextEditingController(
       text: h?.targetValue != null ? _formatNumber(h!.targetValue!) : '',
     );
@@ -64,6 +71,7 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
   void dispose() {
     _nameController.dispose();
     _targetValueController.dispose();
+    _durationCountController.dispose();
     super.dispose();
   }
 
@@ -99,6 +107,8 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
     });
   }
 
+  bool get _isDuration => _frequencyType == FrequencyType.duration;
+
   Future<void> _save() async {
     setState(() => _daysError = null);
     final formValid = _formKey.currentState?.validate() ?? false;
@@ -116,6 +126,8 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
       ..targetValue = _showTargetField ? double.tryParse(_targetValueController.text) : null
       ..frequencyType = _frequencyType
       ..specificDays = (_specificDays.toList()..sort())
+      ..durationCount = _isDuration ? int.tryParse(_durationCountController.text) : null
+      ..durationUnit = _durationUnit
       ..reminderTimes = _reminderTimes
       ..icon = _icon
       ..category = _category
@@ -305,8 +317,58 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
                     onTap: () =>
                         setState(() => _frequencyType = FrequencyType.multipleTimesPerDay),
                   ),
+                  _OptionChip(
+                    label: 'Duration',
+                    icon: Icons.event_repeat_rounded,
+                    selected: _isDuration,
+                    onTap: () => setState(() => _frequencyType = FrequencyType.duration),
+                  ),
                 ],
               ),
+              if (_isDuration) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'A fixed-length challenge, e.g. "30 days" — shows a full '
+                  'day-by-day checklist when you tap into it from Home.',
+                  style: AppTypography.caption,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 100,
+                      child: TextFormField(
+                        controller: _durationCountController,
+                        keyboardType: TextInputType.number,
+                        style: AppTypography.bodyLarge,
+                        decoration: _fieldDecoration('e.g. 30'),
+                        validator: (v) {
+                          if (!_isDuration) return null;
+                          final value = int.tryParse(v ?? '');
+                          if (value == null || value <= 0) return 'Invalid';
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final unit in DurationUnit.values)
+                            _OptionChip(
+                              label: _durationUnitLabel(unit),
+                              selected: _durationUnit == unit,
+                              onTap: () => setState(() => _durationUnit = unit),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (_frequencyType == FrequencyType.specificDays) ...[
                 const SizedBox(height: 16),
                 Wrap(
@@ -405,6 +467,12 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
       ),
     );
   }
+
+  String _durationUnitLabel(DurationUnit u) => switch (u) {
+        DurationUnit.days => 'Days',
+        DurationUnit.weeks => 'Weeks',
+        DurationUnit.months => 'Months',
+      };
 
   String _categoryLabel(HabitCategory c) => switch (c) {
         HabitCategory.health => 'Health',

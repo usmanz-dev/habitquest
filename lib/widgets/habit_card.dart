@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import '../data/cosmetics.dart';
 import '../models/habit.dart';
 import '../screens/add_edit_habit_screen.dart';
+import '../screens/habit_detail_screen.dart';
 import '../services/notification_service.dart';
 import '../services/providers.dart';
 import '../services/sound_service.dart';
@@ -22,9 +23,15 @@ import 'glass_card.dart';
 /// (§5.4 "Habit Checked" animation spec: CurvedAnimation + Curves.elasticOut),
 /// and fires a light haptic + sound effect.
 class HabitCard extends ConsumerStatefulWidget {
-  const HabitCard({super.key, required this.habit});
+  const HabitCard({super.key, required this.habit, this.enableDetailTap = true});
 
   final Habit habit;
+
+  /// Whether tapping the icon/name opens [HabitDetailScreen] for a
+  /// [FrequencyType.duration] habit. Set false when this card is itself
+  /// embedded inside that detail screen (today's row), so tapping it there
+  /// doesn't push a second copy of the same screen.
+  final bool enableDetailTap;
 
   @override
   ConsumerState<HabitCard> createState() => _HabitCardState();
@@ -65,6 +72,9 @@ class _HabitCardState extends ConsumerState<HabitCard>
     _valueController.dispose();
     super.dispose();
   }
+
+  bool get _canOpenDetail =>
+      widget.enableDetailTap && widget.habit.frequencyType == FrequencyType.duration;
 
   void _playBounce() {
     _bounceController.forward(from: 0).then((_) => _bounceController.reverse());
@@ -203,25 +213,46 @@ class _HabitCardState extends ConsumerState<HabitCard>
           child: GlassCard(
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(widget.habit.icon, style: const TextStyle(fontSize: 20)),
-                ),
-                const SizedBox(width: 14),
                 Expanded(
-                  child: Text(
-                    widget.habit.name,
-                    style: AppTypography.headingMedium,
-                    overflow: TextOverflow.ellipsis,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _canOpenDetail
+                        ? () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => HabitDetailScreen(habit: widget.habit),
+                              ),
+                            )
+                        : null,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          alignment: Alignment.center,
+                          decoration: const BoxDecoration(
+                            color: AppColors.surface,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(widget.habit.icon, style: const TextStyle(fontSize: 20)),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            widget.habit.name,
+                            style: AppTypography.headingMedium,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
+                if (_canOpenDetail)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 4),
+                    child: Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 18),
+                  ),
                 control,
                 IconButton(
                   tooltip: 'Edit habit',

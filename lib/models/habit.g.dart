@@ -28,39 +28,50 @@ const HabitSchema = CollectionSchema(
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'frequencyType': PropertySchema(
+    r'durationCount': PropertySchema(
       id: 2,
+      name: r'durationCount',
+      type: IsarType.long,
+    ),
+    r'durationUnit': PropertySchema(
+      id: 3,
+      name: r'durationUnit',
+      type: IsarType.byte,
+      enumMap: _HabitdurationUnitEnumValueMap,
+    ),
+    r'frequencyType': PropertySchema(
+      id: 4,
       name: r'frequencyType',
       type: IsarType.byte,
       enumMap: _HabitfrequencyTypeEnumValueMap,
     ),
     r'icon': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'icon',
       type: IsarType.string,
     ),
     r'name': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'name',
       type: IsarType.string,
     ),
     r'reminderTimes': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'reminderTimes',
       type: IsarType.stringList,
     ),
     r'specificDays': PropertySchema(
-      id: 6,
+      id: 8,
       name: r'specificDays',
       type: IsarType.longList,
     ),
     r'targetValue': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'targetValue',
       type: IsarType.double,
     ),
     r'trackingType': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'trackingType',
       type: IsarType.byte,
       enumMap: _HabittrackingTypeEnumValueMap,
@@ -107,13 +118,15 @@ void _habitSerialize(
 ) {
   writer.writeByte(offsets[0], object.category.index);
   writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeByte(offsets[2], object.frequencyType.index);
-  writer.writeString(offsets[3], object.icon);
-  writer.writeString(offsets[4], object.name);
-  writer.writeStringList(offsets[5], object.reminderTimes);
-  writer.writeLongList(offsets[6], object.specificDays);
-  writer.writeDouble(offsets[7], object.targetValue);
-  writer.writeByte(offsets[8], object.trackingType.index);
+  writer.writeLong(offsets[2], object.durationCount);
+  writer.writeByte(offsets[3], object.durationUnit.index);
+  writer.writeByte(offsets[4], object.frequencyType.index);
+  writer.writeString(offsets[5], object.icon);
+  writer.writeString(offsets[6], object.name);
+  writer.writeStringList(offsets[7], object.reminderTimes);
+  writer.writeLongList(offsets[8], object.specificDays);
+  writer.writeDouble(offsets[9], object.targetValue);
+  writer.writeByte(offsets[10], object.trackingType.index);
 }
 
 Habit _habitDeserialize(
@@ -127,17 +140,21 @@ Habit _habitDeserialize(
       _HabitcategoryValueEnumMap[reader.readByteOrNull(offsets[0])] ??
           HabitCategory.health;
   object.createdAt = reader.readDateTime(offsets[1]);
+  object.durationCount = reader.readLongOrNull(offsets[2]);
+  object.durationUnit =
+      _HabitdurationUnitValueEnumMap[reader.readByteOrNull(offsets[3])] ??
+          DurationUnit.days;
   object.frequencyType =
-      _HabitfrequencyTypeValueEnumMap[reader.readByteOrNull(offsets[2])] ??
+      _HabitfrequencyTypeValueEnumMap[reader.readByteOrNull(offsets[4])] ??
           FrequencyType.daily;
-  object.icon = reader.readString(offsets[3]);
+  object.icon = reader.readString(offsets[5]);
   object.id = id;
-  object.name = reader.readString(offsets[4]);
-  object.reminderTimes = reader.readStringList(offsets[5]) ?? [];
-  object.specificDays = reader.readLongList(offsets[6]) ?? [];
-  object.targetValue = reader.readDoubleOrNull(offsets[7]);
+  object.name = reader.readString(offsets[6]);
+  object.reminderTimes = reader.readStringList(offsets[7]) ?? [];
+  object.specificDays = reader.readLongList(offsets[8]) ?? [];
+  object.targetValue = reader.readDoubleOrNull(offsets[9]);
   object.trackingType =
-      _HabittrackingTypeValueEnumMap[reader.readByteOrNull(offsets[8])] ??
+      _HabittrackingTypeValueEnumMap[reader.readByteOrNull(offsets[10])] ??
           TrackingType.checkbox;
   return object;
 }
@@ -155,19 +172,24 @@ P _habitDeserializeProp<P>(
     case 1:
       return (reader.readDateTime(offset)) as P;
     case 2:
+      return (reader.readLongOrNull(offset)) as P;
+    case 3:
+      return (_HabitdurationUnitValueEnumMap[reader.readByteOrNull(offset)] ??
+          DurationUnit.days) as P;
+    case 4:
       return (_HabitfrequencyTypeValueEnumMap[reader.readByteOrNull(offset)] ??
           FrequencyType.daily) as P;
-    case 3:
-      return (reader.readString(offset)) as P;
-    case 4:
-      return (reader.readString(offset)) as P;
     case 5:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readString(offset)) as P;
     case 6:
-      return (reader.readLongList(offset) ?? []) as P;
+      return (reader.readString(offset)) as P;
     case 7:
-      return (reader.readDoubleOrNull(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 8:
+      return (reader.readLongList(offset) ?? []) as P;
+    case 9:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 10:
       return (_HabittrackingTypeValueEnumMap[reader.readByteOrNull(offset)] ??
           TrackingType.checkbox) as P;
     default:
@@ -193,17 +215,29 @@ const _HabitcategoryValueEnumMap = {
   5: HabitCategory.personal,
   6: HabitCategory.custom,
 };
+const _HabitdurationUnitEnumValueMap = {
+  'days': 0,
+  'weeks': 1,
+  'months': 2,
+};
+const _HabitdurationUnitValueEnumMap = {
+  0: DurationUnit.days,
+  1: DurationUnit.weeks,
+  2: DurationUnit.months,
+};
 const _HabitfrequencyTypeEnumValueMap = {
   'daily': 0,
   'specificDays': 1,
   'timesPerWeek': 2,
   'multipleTimesPerDay': 3,
+  'duration': 4,
 };
 const _HabitfrequencyTypeValueEnumMap = {
   0: FrequencyType.daily,
   1: FrequencyType.specificDays,
   2: FrequencyType.timesPerWeek,
   3: FrequencyType.multipleTimesPerDay,
+  4: FrequencyType.duration,
 };
 const _HabittrackingTypeEnumValueMap = {
   'checkbox': 0,
@@ -404,6 +438,128 @@ extension HabitQueryFilter on QueryBuilder<Habit, Habit, QFilterCondition> {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'createdAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationCountIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'durationCount',
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationCountIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'durationCount',
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationCountEqualTo(
+      int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'durationCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationCountGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'durationCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationCountLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'durationCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationCountBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'durationCount',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationUnitEqualTo(
+      DurationUnit value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'durationUnit',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationUnitGreaterThan(
+    DurationUnit value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'durationUnit',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationUnitLessThan(
+    DurationUnit value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'durationUnit',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterFilterCondition> durationUnitBetween(
+    DurationUnit lower,
+    DurationUnit upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'durationUnit',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -1293,6 +1449,30 @@ extension HabitQuerySortBy on QueryBuilder<Habit, Habit, QSortBy> {
     });
   }
 
+  QueryBuilder<Habit, Habit, QAfterSortBy> sortByDurationCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'durationCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterSortBy> sortByDurationCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'durationCount', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterSortBy> sortByDurationUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'durationUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterSortBy> sortByDurationUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'durationUnit', Sort.desc);
+    });
+  }
+
   QueryBuilder<Habit, Habit, QAfterSortBy> sortByFrequencyType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'frequencyType', Sort.asc);
@@ -1376,6 +1556,30 @@ extension HabitQuerySortThenBy on QueryBuilder<Habit, Habit, QSortThenBy> {
   QueryBuilder<Habit, Habit, QAfterSortBy> thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterSortBy> thenByDurationCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'durationCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterSortBy> thenByDurationCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'durationCount', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterSortBy> thenByDurationUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'durationUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QAfterSortBy> thenByDurationUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'durationUnit', Sort.desc);
     });
   }
 
@@ -1465,6 +1669,18 @@ extension HabitQueryWhereDistinct on QueryBuilder<Habit, Habit, QDistinct> {
     });
   }
 
+  QueryBuilder<Habit, Habit, QDistinct> distinctByDurationCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'durationCount');
+    });
+  }
+
+  QueryBuilder<Habit, Habit, QDistinct> distinctByDurationUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'durationUnit');
+    });
+  }
+
   QueryBuilder<Habit, Habit, QDistinct> distinctByFrequencyType() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'frequencyType');
@@ -1526,6 +1742,18 @@ extension HabitQueryProperty on QueryBuilder<Habit, Habit, QQueryProperty> {
   QueryBuilder<Habit, DateTime, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
+    });
+  }
+
+  QueryBuilder<Habit, int?, QQueryOperations> durationCountProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'durationCount');
+    });
+  }
+
+  QueryBuilder<Habit, DurationUnit, QQueryOperations> durationUnitProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'durationUnit');
     });
   }
 

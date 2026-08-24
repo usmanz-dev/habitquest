@@ -75,6 +75,10 @@ class IsarService {
       if (habit.frequencyType == FrequencyType.specificDays) {
         return habit.specificDays.contains(weekday);
       }
+      if (habit.frequencyType == FrequencyType.duration) {
+        final end = habit.durationEndDate;
+        return end != null && !dayOnly.isAfter(end);
+      }
       return true;
     }).toList();
   }

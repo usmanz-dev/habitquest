@@ -132,10 +132,23 @@ final pendingDayCompleteProvider = StateProvider<bool>((ref) => false);
 
 bool _wasYesterdayMissed(int currentStreak, List<HabitLog> recentLogs) {
   if (currentStreak <= 0) return false;
-  final yesterday = DateTime.now().subtract(const Duration(days: 1));
-  final key = DateTime(yesterday.year, yesterday.month, yesterday.day);
+
+  final today = DateTime.now();
+  final todayKey = DateTime(today.year, today.month, today.day);
+  final yesterdayKey = todayKey.subtract(const Duration(days: 1));
+
+  // A streak of 1+ can mean either "carried over from an earlier day" or
+  // "just started with today's first-ever completion" (applyHabitCompletion
+  // bumps 0 -> 1 on day one, same as any other day). Only the first case has
+  // a real "yesterday" to have missed — require a completed log on some day
+  // strictly before today, or a brand-new streak falsely reads as at-risk.
+  final hasPriorDayActivity = recentLogs.any(
+    (log) => log.completed && DateTime(log.date.year, log.date.month, log.date.day).isBefore(todayKey),
+  );
+  if (!hasPriorDayActivity) return false;
+
   return !recentLogs.any(
-    (log) => log.completed && DateTime(log.date.year, log.date.month, log.date.day) == key,
+    (log) => log.completed && DateTime(log.date.year, log.date.month, log.date.day) == yesterdayKey,
   );
 }
 

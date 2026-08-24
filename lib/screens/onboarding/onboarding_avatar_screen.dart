@@ -54,12 +54,13 @@ class OnboardingAvatarScreen extends StatelessWidget {
               ).animate().fadeIn(delay: 350.ms, duration: 400.ms),
               const SizedBox(height: 28),
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   for (final stage in AvatarStage.values.take(4))
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: _StagePreview(stage: stage),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: _StagePreview(stage: stage),
+                      ),
                     ),
                 ],
               ).animate().fadeIn(delay: 500.ms, duration: 400.ms),
