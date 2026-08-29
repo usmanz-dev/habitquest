@@ -1,6 +1,6 @@
 # HabitQuest — Terms of Service
 
-**Last updated:** [Insert Date]
+**Last updated:** August 18, 2026
 
 By downloading and using HabitQuest, you agree to the following terms.
 

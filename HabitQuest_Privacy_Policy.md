@@ -1,6 +1,6 @@
 # HabitQuest — Privacy Policy
 
-**Last updated:** [Insert Date]
+**Last updated:** August 18, 2026
 
 This Privacy Policy describes how HabitQuest ("we", "our", "the app") handles information when you use our mobile application.
 
