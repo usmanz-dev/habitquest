@@ -114,6 +114,14 @@ final todayLogProvider = FutureProvider.family<HabitLog?, int>((ref, habitId) {
   return ref.watch(isarServiceProvider).getTodayLogForHabit(habitId);
 });
 
+/// Every log ever recorded for a single habit — the Habit Detail Screen's
+/// day-by-day grid. Invalidated by [logHabitCompletion] alongside
+/// [todayLogProvider] so a completion made from either the Home Screen or
+/// the detail screen shows up in both immediately.
+final habitLogsProvider = FutureProvider.family<List<HabitLog>, int>((ref, habitId) {
+  return ref.watch(isarServiceProvider).getLogsForHabit(habitId);
+});
+
 /// Days of history the Progress Screen fetches — covers both the streak
 /// path (last 14 days) and the monthly stat (last 30 days).
 const int kStatsFetchDays = 30;

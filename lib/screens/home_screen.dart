@@ -19,7 +19,9 @@ import 'settings_screen.dart';
 import 'shop_screen.dart';
 
 /// Main dashboard (HabitQuest_PRD.md §7 screen 5): avatar, XP/gold/streak,
-/// and today's habit checklist pulled live from Isar (§3 core daily loop).
+/// and the "All Habits" checklist (habits due today, per [todayHabitsProvider])
+/// pulled live from Isar (§3 core daily loop). Each card opens
+/// [HabitDetailScreen] for that habit's full day-by-day plan.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -50,7 +52,9 @@ class HomeScreen extends ConsumerWidget {
         context: context,
         barrierColor: Colors.black87,
         builder: (_) => const DayCompleteScreen(),
-      ).then((_) => ref.read(pendingDayCompleteProvider.notifier).state = false);
+      ).then(
+        (_) => ref.read(pendingDayCompleteProvider.notifier).state = false,
+      );
     });
 
     // Fires once when a missed day puts the streak at risk (§7 screen 12).
@@ -73,30 +77,29 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Shop',
             icon: const Icon(Icons.storefront_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ShopScreen()),
-            ),
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const ShopScreen())),
           ),
           IconButton(
             tooltip: 'Progress',
             icon: const Icon(Icons.timeline_rounded),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ProgressScreen()),
-            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const ProgressScreen())),
           ),
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const SettingsScreen())),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddEditHabitScreen()),
-        ),
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const AddEditHabitScreen())),
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Habit'),
       ),
@@ -114,7 +117,9 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AvatarProfileScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const AvatarProfileScreen(),
+                        ),
                       ),
                       child: AvatarDisplay(
                         level: levelInfo.level,
@@ -129,7 +134,44 @@ class HomeScreen extends ConsumerWidget {
                       currentStreak: progress.currentStreak,
                     ),
                     const SizedBox(height: 28),
-                    Text("Today's Habits", style: AppTypography.headingLarge),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'All Habits',
+                            style: AppTypography.headingLarge,
+                          ),
+                        ),
+                        if (todayHabits.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.12),
+                              ),
+                            ),
+                            child: Text(
+                              '${todayHabits.length}',
+                              style: AppTypography.caption.copyWith(
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (todayHabits.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap a habit to see its full plan.',
+                        style: AppTypography.caption,
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     if (todayHabits.isEmpty)
                       _EmptyHabitsMessage()

@@ -10,11 +10,9 @@ import '../data/cosmetics.dart';
 import '../models/habit.dart';
 import '../screens/add_edit_habit_screen.dart';
 import '../screens/habit_detail_screen.dart';
-import '../services/notification_service.dart';
+import '../services/habit_completion.dart';
 import '../services/providers.dart';
-import '../services/sound_service.dart';
 import '../theme/app_theme.dart';
-import '../utils/rewards.dart';
 import 'glass_card.dart';
 
 /// One row of the Home Screen's today checklist (HabitQuest_PRD.md §7
@@ -23,14 +21,18 @@ import 'glass_card.dart';
 /// (§5.4 "Habit Checked" animation spec: CurvedAnimation + Curves.elasticOut),
 /// and fires a light haptic + sound effect.
 class HabitCard extends ConsumerStatefulWidget {
-  const HabitCard({super.key, required this.habit, this.enableDetailTap = true});
+  const HabitCard({
+    super.key,
+    required this.habit,
+    this.enableDetailTap = true,
+  });
 
   final Habit habit;
 
-  /// Whether tapping the icon/name opens [HabitDetailScreen] for a
-  /// [FrequencyType.duration] habit. Set false when this card is itself
-  /// embedded inside that detail screen (today's row), so tapping it there
-  /// doesn't push a second copy of the same screen.
+  /// Whether tapping the icon/name opens [HabitDetailScreen]. Set false when
+  /// this card is itself embedded inside that detail screen (a non-checkbox
+  /// habit's "today" control), so tapping it there doesn't push a second
+  /// copy of the same screen.
   final bool enableDetailTap;
 
   @override
@@ -73,8 +75,7 @@ class _HabitCardState extends ConsumerState<HabitCard>
     super.dispose();
   }
 
-  bool get _canOpenDetail =>
-      widget.enableDetailTap && widget.habit.frequencyType == FrequencyType.duration;
+  bool get _canOpenDetail => widget.enableDetailTap;
 
   void _playBounce() {
     _bounceController.forward(from: 0).then((_) => _bounceController.reverse());
@@ -83,7 +84,10 @@ class _HabitCardState extends ConsumerState<HabitCard>
   /// Confetti Burst cosmetic (HabitQuest_PRD.md §7 screen 11) — plays once
   /// over the card, then removes itself; a no-op if not owned.
   void _maybePlayConfetti() {
-    if (!ref.read(userProgressProvider).ownedCosmeticIds.contains(CosmeticIds.confettiBurst)) {
+    if (!ref
+        .read(userProgressProvider)
+        .ownedCosmeticIds
+        .contains(CosmeticIds.confettiBurst)) {
       return;
     }
     setState(() => _showConfetti = true);
@@ -98,40 +102,16 @@ class _HabitCardState extends ConsumerState<HabitCard>
     required bool completed,
     double? valueLogged,
   }) async {
-    final db = ref.read(isarServiceProvider);
-
-    final wasFirstCompletionToday =
-        completed && await db.countTodayCompletedLogs() == 0;
-
-    await db.logCompletion(
-      widget.habit.id,
+    await logHabitCompletion(
+      ref,
+      widget.habit,
       completed: completed,
       valueLogged: valueLogged,
     );
-    ref.invalidate(todayLogProvider(widget.habit.id));
-
     if (!completed) return;
 
-    await NotificationService.instance.cancelLastChance(widget.habit.id);
-
-    final currentStreak = ref.read(userProgressProvider).currentStreak;
-    await ref.read(userProgressProvider.notifier).applyHabitCompletion(
-          xpGained: kXpPerCompletion,
-          goldGained: kGoldPerCompletion,
-          hpDelta: kHpRegenPerCompletion,
-          newStreak: wasFirstCompletionToday ? currentStreak + 1 : null,
-        );
-
     _playBounce();
-    HapticFeedback.lightImpact();
-    SoundService.instance.play(AppSound.habitCheck);
     _maybePlayConfetti();
-
-    final todayHabits = ref.read(todayHabitsProvider);
-    if (todayHabits.isNotEmpty &&
-        await db.isDayComplete(todayHabits.map((h) => h.id).toList())) {
-      ref.read(pendingDayCompleteProvider.notifier).state = true;
-    }
   }
 
   void _startTimer() {
@@ -178,31 +158,31 @@ class _HabitCardState extends ConsumerState<HabitCard>
 
     final Widget control = switch (widget.habit.trackingType) {
       TrackingType.checkbox => _CheckboxControl(
-          isDone: isDone,
-          onTap: () => _writeLogAndMaybeReward(completed: true),
-        ),
+        isDone: isDone,
+        onTap: () => _writeLogAndMaybeReward(completed: true),
+      ),
       TrackingType.counter => _CounterControl(
-          current: (todayLog?.valueLogged ?? 0).toInt(),
-          target: (widget.habit.targetValue ?? 1).toInt(),
-          isDone: isDone,
-          onAdjust: _adjustCounter,
-        ),
+        current: (todayLog?.valueLogged ?? 0).toInt(),
+        target: (widget.habit.targetValue ?? 1).toInt(),
+        isDone: isDone,
+        onAdjust: _adjustCounter,
+      ),
       TrackingType.timer => _TimerControl(
-          isDone: isDone,
-          remainingSeconds: _remainingSeconds,
-          onStart: _startTimer,
-          onCancel: _cancelTimer,
-        ),
+        isDone: isDone,
+        remainingSeconds: _remainingSeconds,
+        onStart: _startTimer,
+        onCancel: _cancelTimer,
+      ),
       TrackingType.value => _ValueControl(
-          isDone: isDone,
-          loggedValue: todayLog?.valueLogged,
-          controller: _valueController,
-          onLog: () {
-            final value = double.tryParse(_valueController.text);
-            if (value == null) return;
-            _writeLogAndMaybeReward(completed: true, valueLogged: value);
-          },
-        ),
+        isDone: isDone,
+        loggedValue: todayLog?.valueLogged,
+        controller: _valueController,
+        onLog: () {
+          final value = double.tryParse(_valueController.text);
+          if (value == null) return;
+          _writeLogAndMaybeReward(completed: true, valueLogged: value);
+        },
+      ),
     };
 
     return Stack(
@@ -210,64 +190,114 @@ class _HabitCardState extends ConsumerState<HabitCard>
       children: [
         ScaleTransition(
           scale: _scaleAnimation,
-          child: GlassCard(
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _canOpenDetail
-                        ? () => Navigator.of(context).push(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              boxShadow: isDone
+                  ? [
+                      BoxShadow(
+                        color: AppColors.successStart.withValues(alpha: 0.16),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: GlassCard(
+              overlayOpacity: isDone ? 0.16 : 0.12,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _canOpenDetail
+                          ? () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => HabitDetailScreen(habit: widget.habit),
+                                builder: (_) =>
+                                    HabitDetailScreen(habit: widget.habit),
                               ),
                             )
-                        : null,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          alignment: Alignment.center,
-                          decoration: const BoxDecoration(
-                            color: AppColors.surface,
-                            shape: BoxShape.circle,
+                          : null,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: isDone
+                                    ? [
+                                        AppColors.successStart.withValues(
+                                          alpha: 0.22,
+                                        ),
+                                        AppColors.successEnd.withValues(
+                                          alpha: 0.12,
+                                        ),
+                                      ]
+                                    : [
+                                        AppColors.purpleStart.withValues(
+                                          alpha: 0.20,
+                                        ),
+                                        AppColors.purpleEnd.withValues(
+                                          alpha: 0.10,
+                                        ),
+                                      ],
+                              ),
+                            ),
+                            child: Text(
+                              widget.habit.icon,
+                              style: const TextStyle(fontSize: 20),
+                            ),
                           ),
-                          child: Text(widget.habit.icon, style: const TextStyle(fontSize: 20)),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            widget.habit.name,
-                            style: AppTypography.headingMedium,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              widget.habit.name,
+                              style: AppTypography.headingMedium,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                if (_canOpenDetail)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 4),
-                    child: Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary, size: 18),
-                  ),
-                control,
-                IconButton(
-                  tooltip: 'Edit habit',
-                  iconSize: 18,
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => AddEditHabitScreen(existingHabit: widget.habit),
+                  const SizedBox(width: 8),
+                  if (_canOpenDetail)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 4),
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary,
+                        size: 18,
+                      ),
+                    ),
+                  control,
+                  IconButton(
+                    tooltip: 'Edit habit',
+                    iconSize: 18,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      color: AppColors.textSecondary,
+                    ),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AddEditHabitScreen(existingHabit: widget.habit),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -277,7 +307,9 @@ class _HabitCardState extends ConsumerState<HabitCard>
               child: AnimatedBuilder(
                 animation: _confettiController,
                 builder: (context, _) => CustomPaint(
-                  painter: _ConfettiPainter(progress: _confettiController.value),
+                  painter: _ConfettiPainter(
+                    progress: _confettiController.value,
+                  ),
                 ),
               ),
             ),
@@ -314,7 +346,8 @@ class _ConfettiPainter extends CustomPainter {
       final angle = random.nextDouble() * 2 * math.pi;
       final speed = 40 + random.nextDouble() * 60;
       final distance = progress * speed;
-      final offset = center + Offset(math.cos(angle), math.sin(angle)) * distance;
+      final offset =
+          center + Offset(math.cos(angle), math.sin(angle)) * distance;
       final opacity = (1 - progress).clamp(0.0, 1.0);
 
       paint.color = _colors[i % _colors.length].withValues(alpha: opacity);
@@ -327,7 +360,8 @@ class _ConfettiPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) => oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _ConfettiPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class _DoneChip extends StatelessWidget {
@@ -338,7 +372,11 @@ class _DoneChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.check_circle_rounded, color: AppColors.successStart, size: 20),
+        Icon(
+          Icons.check_circle_rounded,
+          color: AppColors.successStart,
+          size: 20,
+        ),
         const SizedBox(width: 6),
         Text('Done', style: AppTypography.bodyMedium),
       ],
@@ -468,7 +506,10 @@ class _ValueControl extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(loggedValue?.toStringAsFixed(1) ?? '', style: AppTypography.bodyLarge),
+          Text(
+            loggedValue?.toStringAsFixed(1) ?? '',
+            style: AppTypography.bodyLarge,
+          ),
           const SizedBox(width: 8),
           const _DoneChip(),
         ],
@@ -512,7 +553,9 @@ class _RoundIconButton extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.surface.withValues(alpha: enabled ? 1 : 0.4),
-          border: Border.all(color: Colors.white.withValues(alpha: enabled ? 0.16 : 0.06)),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: enabled ? 0.16 : 0.06),
+          ),
         ),
         child: Icon(
           icon,

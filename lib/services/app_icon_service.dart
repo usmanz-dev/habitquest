@@ -59,10 +59,20 @@ class AppIconService {
   }
 
   Future<AppIconState> _determineState(IsarService db) async {
-    final todayOnly = DateTime.now();
-    final yesterday = DateTime(todayOnly.year, todayOnly.month, todayOnly.day)
-        .subtract(const Duration(days: 1));
+    final now = DateTime.now();
+    final todayOnly = DateTime(now.year, now.month, now.day);
+    final yesterday = todayOnly.subtract(const Duration(days: 1));
     final dayBeforeYesterday = yesterday.subtract(const Duration(days: 1));
+
+    // Immediate positive feedback: if every habit due today is already
+    // checked off, reflect that right away instead of waiting for tomorrow's
+    // yesterday-lookback to catch up — otherwise a streak the user just
+    // fixed today keeps showing yesterday's angry icon until the day after.
+    final todayStatus = await _completionStatusFor(db, todayOnly);
+    if (todayStatus.allCompleted) {
+      final progress = await db.getUserProgress();
+      return progress.currentStreak >= 2 ? AppIconState.happy : AppIconState.neutral;
+    }
 
     final yesterdayStatus = await _completionStatusFor(db, yesterday);
 

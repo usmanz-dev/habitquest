@@ -85,4 +85,38 @@ extension HabitDuration on Habit {
     final totalDays = end.difference(start).inDays + 1;
     return [for (var i = 0; i < totalDays; i++) start.add(Duration(days: i))];
   }
+
+  /// How many days back a non-[FrequencyType.duration] habit's
+  /// [scheduleDates] window looks, so the Habit Detail Screen's date grid
+  /// stays a fixed size instead of growing forever for an old habit.
+  static const int _kRollingWindowLookbackDays = 29;
+
+  /// How many days ahead [scheduleDates] previews for a recurring habit —
+  /// enough to see "what's coming" without rendering an unbounded future.
+  static const int _kRollingWindowLookaheadDays = 6;
+
+  /// The days the Habit Detail Screen's grid should show for *any* habit,
+  /// not just [FrequencyType.duration] ones: the fixed challenge range for a
+  /// duration habit, or a rolling ~30-day-back/~1-week-ahead window (clipped
+  /// to not start before [createdAt]) for a recurring one, filtered down to
+  /// just the due weekdays for [FrequencyType.specificDays].
+  List<DateTime> get scheduleDates {
+    if (frequencyType == FrequencyType.duration) return durationDates;
+
+    final now = DateTime.now();
+    final todayOnly = DateTime(now.year, now.month, now.day);
+    final createdOnly = DateTime(createdAt.year, createdAt.month, createdAt.day);
+    final earliestWindowStart =
+        todayOnly.subtract(const Duration(days: _kRollingWindowLookbackDays));
+    final start = createdOnly.isAfter(earliestWindowStart) ? createdOnly : earliestWindowStart;
+    final end = todayOnly.add(const Duration(days: _kRollingWindowLookaheadDays));
+
+    final totalDays = end.difference(start).inDays + 1;
+    final allDays = [for (var i = 0; i < totalDays; i++) start.add(Duration(days: i))];
+
+    if (frequencyType == FrequencyType.specificDays && specificDays.isNotEmpty) {
+      return allDays.where((d) => specificDays.contains(d.weekday)).toList();
+    }
+    return allDays;
+  }
 }

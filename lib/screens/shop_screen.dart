@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/cosmetics.dart';
-import '../services/ad_service.dart';
-import '../services/leveling_service.dart';
 import '../services/providers.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -41,7 +39,9 @@ const List<_ShopItem> _kShopItems = [
 ];
 
 /// Shop/Rewards Screen (HabitQuest_PRD.md §7 screen 11): spend Gold on
-/// cosmetics, or unlock the Secret Premium Avatar with a Rewarded Ad.
+/// cosmetics. The Secret Premium Avatar (Rewarded-Ad unlock) is skipped here
+/// for now — [IsarService.unlockPremiumAvatar] and [LevelingService]'s
+/// premium-stage gating stay in place so it can come back later.
 class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
 
@@ -50,8 +50,6 @@ class ShopScreen extends ConsumerStatefulWidget {
 }
 
 class _ShopScreenState extends ConsumerState<ShopScreen> {
-  bool _unlockingPremium = false;
-
   Future<void> _buy(_ShopItem item) async {
     final success =
         await ref.read(userProgressProvider.notifier).purchaseCosmetic(item.id, item.cost);
@@ -63,22 +61,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Not enough gold for that yet.')),
-      );
-    }
-  }
-
-  Future<void> _unlockPremiumAvatar() async {
-    setState(() => _unlockingPremium = true);
-    final earned = await AdService.instance.showRewardedAdForAvatarUnlock();
-    if (!mounted) return;
-
-    setState(() => _unlockingPremium = false);
-    if (earned) {
-      HapticFeedback.heavyImpact();
-      await ref.read(userProgressProvider.notifier).unlockPremiumAvatar();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Golden Phoenix unlocked!')),
       );
     }
   }
@@ -113,14 +95,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               ),
             ),
             const SizedBox(height: 28),
-            Text('Secret Premium Avatar', style: AppTypography.headingLarge),
-            const SizedBox(height: 16),
-            _PremiumAvatarCard(
-              unlocked: progress.premiumAvatarUnlocked,
-              working: _unlockingPremium,
-              onUnlock: _unlockPremiumAvatar,
-            ),
-            const SizedBox(height: 28),
             Text('Cosmetics', style: AppTypography.headingLarge),
             const SizedBox(height: 16),
             for (final item in _kShopItems) ...[
@@ -134,74 +108,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PremiumAvatarCard extends StatelessWidget {
-  const _PremiumAvatarCard({
-    required this.unlocked,
-    required this.working,
-    required this.onUnlock,
-  });
-
-  final bool unlocked;
-  final bool working;
-  final VoidCallback onUnlock;
-
-  @override
-  Widget build(BuildContext context) {
-    final stage = AvatarStage.goldenPhoenix;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: AppGradients.gold,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        boxShadow: [
-          BoxShadow(color: AppColors.amberStart.withValues(alpha: 0.35), blurRadius: 28),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(color: Colors.black26, shape: BoxShape.circle),
-            child: Image.asset(stage.assetPath, fit: BoxFit.contain),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  stage.displayName,
-                  style: AppTypography.headingMedium.copyWith(color: Colors.black87),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  unlocked ? 'Unlocked' : 'Unlock instantly with a Rewarded Ad',
-                  style: AppTypography.bodyMedium.copyWith(color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          if (unlocked)
-            const Icon(Icons.check_circle_rounded, color: Colors.black87, size: 28)
-          else
-            ElevatedButton(
-              onPressed: working ? null : onUnlock,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black87,
-                foregroundColor: Colors.white,
-              ),
-              child: Text(working ? 'Loading…' : 'Unlock with Ad'),
-            ),
-        ],
       ),
     );
   }

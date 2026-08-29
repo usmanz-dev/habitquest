@@ -43,6 +43,7 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
   late Set<int> _specificDays;
   late List<String> _reminderTimes;
   late DurationUnit _durationUnit;
+  late DateTime _startDate;
 
   bool _saving = false;
   String? _daysError;
@@ -59,6 +60,7 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
     _specificDays = (h?.specificDays ?? const <int>[]).toSet();
     _reminderTimes = List.of(h?.reminderTimes ?? const <String>[]);
     _durationUnit = h?.durationUnit ?? DurationUnit.days;
+    _startDate = h?.createdAt ?? DateTime.now();
     _durationCountController = TextEditingController(
       text: h?.durationCount != null ? '${h!.durationCount}' : '',
     );
@@ -109,6 +111,17 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
 
   bool get _isDuration => _frequencyType == FrequencyType.duration;
 
+  Future<void> _pickStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked == null) return;
+    setState(() => _startDate = DateTime(picked.year, picked.month, picked.day));
+  }
+
   Future<void> _save() async {
     setState(() => _daysError = null);
     final formValid = _formKey.currentState?.validate() ?? false;
@@ -131,7 +144,7 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
       ..reminderTimes = _reminderTimes
       ..icon = _icon
       ..category = _category
-      ..createdAt = widget.existingHabit?.createdAt ?? DateTime.now();
+      ..createdAt = _isDuration ? _startDate : (widget.existingHabit?.createdAt ?? DateTime.now());
 
     if (widget.isEditing) {
       await db.updateHabit(habit);
@@ -327,46 +340,100 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
               ),
               if (_isDuration) ...[
                 const SizedBox(height: 16),
-                Text(
-                  'A fixed-length challenge, e.g. "30 days" — shows a full '
-                  'day-by-day checklist when you tap into it from Home.',
-                  style: AppTypography.caption,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 100,
-                      child: TextFormField(
-                        controller: _durationCountController,
-                        keyboardType: TextInputType.number,
-                        style: AppTypography.bodyLarge,
-                        decoration: _fieldDecoration('e.g. 30'),
-                        validator: (v) {
-                          if (!_isDuration) return null;
-                          final value = int.tryParse(v ?? '');
-                          if (value == null || value <= 0) return 'Invalid';
-                          return null;
-                        },
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    border: Border.all(color: AppColors.purpleEnd.withValues(alpha: 0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'A fixed-length challenge — this habit gets its own '
+                        'day-by-day checklist on Home once you tap into it.',
+                        style: AppTypography.caption,
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      const SizedBox(height: 16),
+                      Text('Starts on'.toUpperCase(), style: AppTypography.caption),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _pickStartDate,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(AppRadius.card),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.event_rounded, size: 18, color: AppColors.purpleEnd),
+                              const SizedBox(width: 10),
+                              Text(_formatStartDate(_startDate), style: AppTypography.bodyLarge),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text('Runs for'.toUpperCase(), style: AppTypography.caption),
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (final unit in DurationUnit.values)
-                            _OptionChip(
-                              label: _durationUnitLabel(unit),
-                              selected: _durationUnit == unit,
-                              onTap: () => setState(() => _durationUnit = unit),
+                          SizedBox(
+                            width: 90,
+                            child: TextFormField(
+                              controller: _durationCountController,
+                              keyboardType: TextInputType.number,
+                              style: AppTypography.bodyLarge,
+                              decoration: _fieldDecoration('e.g. 30'),
+                              onChanged: (_) => setState(() {}),
+                              validator: (v) {
+                                if (!_isDuration) return null;
+                                final value = int.tryParse(v ?? '');
+                                if (value == null || value <= 0) return 'Invalid';
+                                return null;
+                              },
                             ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final unit in DurationUnit.values)
+                                  _OptionChip(
+                                    label: _durationUnitLabel(unit),
+                                    selected: _durationUnit == unit,
+                                    onTap: () => setState(() => _durationUnit = unit),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                  ],
+                      if (_previewEndDate() case final end?) ...[
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Icon(Icons.flag_rounded, size: 16, color: AppColors.amberStart),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Ends on ${_formatStartDate(end)}',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
               if (_frequencyType == FrequencyType.specificDays) ...[
@@ -467,6 +534,27 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
       ),
     );
   }
+
+  /// Live preview of the challenge's last day, computed from the current
+  /// start date + count/unit fields — mirrors [HabitDuration.durationEndDate]
+  /// without needing a saved [Habit] yet.
+  DateTime? _previewEndDate() {
+    final count = int.tryParse(_durationCountController.text);
+    if (count == null || count <= 0) return null;
+    final start = DateTime(_startDate.year, _startDate.month, _startDate.day);
+    return switch (_durationUnit) {
+      DurationUnit.days => start.add(Duration(days: count - 1)),
+      DurationUnit.weeks => start.add(Duration(days: count * 7 - 1)),
+      DurationUnit.months =>
+        DateTime(start.year, start.month + count, start.day).subtract(const Duration(days: 1)),
+    };
+  }
+
+  static const List<String> _kMonthShort = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  String _formatStartDate(DateTime d) => '${d.day} ${_kMonthShort[d.month - 1]} ${d.year}';
 
   String _durationUnitLabel(DurationUnit u) => switch (u) {
         DurationUnit.days => 'Days',
