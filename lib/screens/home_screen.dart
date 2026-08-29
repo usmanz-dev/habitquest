@@ -103,89 +103,88 @@ class HomeScreen extends ConsumerWidget {
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Habit'),
       ),
+      // BannerAdWidget lives in bottomNavigationBar, not body — that's the
+      // Scaffold slot the FloatingActionButton's default position already
+      // reserves space above, so the "Add Habit" button can never end up
+      // sitting on top of the ad strip.
+      bottomNavigationBar: const SafeArea(top: false, child: BannerAdWidget()),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  await ref.read(todayHabitsProvider.notifier).refresh();
-                  await ref.read(userProgressProvider.notifier).refresh();
-                },
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const AvatarProfileScreen(),
-                        ),
-                      ),
-                      child: AvatarDisplay(
-                        level: levelInfo.level,
-                        stage: levelInfo.stage,
-                        ownedCosmetics: progress.ownedCosmeticIds.toSet(),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    StatsBar(
-                      levelInfo: levelInfo,
-                      totalGold: progress.totalGold,
-                      currentStreak: progress.currentStreak,
-                    ),
-                    const SizedBox(height: 28),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'All Habits',
-                            style: AppTypography.headingLarge,
-                          ),
-                        ),
-                        if (todayHabits.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.12),
-                              ),
-                            ),
-                            child: Text(
-                              '${todayHabits.length}',
-                              style: AppTypography.caption.copyWith(
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    if (todayHabits.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Tap a habit to see its full plan.',
-                        style: AppTypography.caption,
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    if (todayHabits.isEmpty)
-                      _EmptyHabitsMessage()
-                    else
-                      for (final habit in todayHabits) ...[
-                        HabitCard(habit: habit),
-                        const SizedBox(height: 12),
-                      ],
-                  ],
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await ref.read(todayHabitsProvider.notifier).refresh();
+            await ref.read(userProgressProvider.notifier).refresh();
+          },
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AvatarProfileScreen(),
+                  ),
+                ),
+                child: AvatarDisplay(
+                  level: levelInfo.level,
+                  stage: levelInfo.stage,
+                  ownedCosmetics: progress.ownedCosmeticIds.toSet(),
                 ),
               ),
-            ),
-            const BannerAdWidget(),
-          ],
+              const SizedBox(height: 24),
+              StatsBar(
+                levelInfo: levelInfo,
+                totalGold: progress.totalGold,
+                currentStreak: progress.currentStreak,
+              ),
+              const SizedBox(height: 28),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'All Habits',
+                      style: AppTypography.headingLarge,
+                    ),
+                  ),
+                  if (todayHabits.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Text(
+                        '${todayHabits.length}',
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if (todayHabits.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Tap a habit to see its full plan.',
+                  style: AppTypography.caption,
+                ),
+              ],
+              const SizedBox(height: 16),
+              if (todayHabits.isEmpty)
+                _EmptyHabitsMessage()
+              else
+                for (final habit in todayHabits) ...[
+                  HabitCard(habit: habit),
+                  const SizedBox(height: 12),
+                ],
+            ],
+          ),
         ),
       ),
     );

@@ -23,20 +23,18 @@ class ProgressScreen extends ConsumerWidget {
         backgroundColor: AppColors.background,
         title: Text('Progress', style: AppTypography.headingMedium),
       ),
+      bottomNavigationBar: const SafeArea(top: false, child: BannerAdWidget()),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: logsAsync.when(
-                data: (logs) => _ProgressBody(logs: logs),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => Center(
-                  child: Text('Could not load progress.', style: AppTypography.bodyMedium),
-                ),
-              ),
+        bottom: false,
+        child: logsAsync.when(
+          data: (logs) => _ProgressBody(logs: logs),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Text(
+              'Could not load progress.',
+              style: AppTypography.bodyMedium,
             ),
-            const BannerAdWidget(),
-          ],
+          ),
         ),
       ),
     );
@@ -49,15 +47,19 @@ class _ProgressBody extends StatelessWidget {
   final List<HabitLog> logs;
 
   Set<DateTime> get _completedDates => {
-        for (final log in logs)
-          if (log.completed) DateTime(log.date.year, log.date.month, log.date.day),
-      };
+    for (final log in logs)
+      if (log.completed) DateTime(log.date.year, log.date.month, log.date.day),
+  };
 
   double _completionRate(Set<DateTime> completed, int days) {
     final today = DateTime.now();
     var hits = 0;
     for (var i = 0; i < days; i++) {
-      final day = DateTime(today.year, today.month, today.day).subtract(Duration(days: i));
+      final day = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).subtract(Duration(days: i));
       if (completed.contains(day)) hits++;
     }
     return hits / days;
@@ -77,11 +79,19 @@ class _ProgressBody extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _StatCard(label: 'This Week', rate: weeklyRate, gradient: AppGradients.success),
+              child: _StatCard(
+                label: 'This Week',
+                rate: weeklyRate,
+                gradient: AppGradients.success,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: _StatCard(label: 'This Month', rate: monthlyRate, gradient: AppGradients.gold),
+              child: _StatCard(
+                label: 'This Month',
+                rate: monthlyRate,
+                gradient: AppGradients.gold,
+              ),
             ),
           ],
         ),
@@ -91,7 +101,11 @@ class _ProgressBody extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.rate, required this.gradient});
+  const _StatCard({
+    required this.label,
+    required this.rate,
+    required this.gradient,
+  });
 
   final String label;
   final double rate;
@@ -125,7 +139,9 @@ class _StatCard extends StatelessWidget {
                   FractionallySizedBox(
                     alignment: Alignment.centerLeft,
                     widthFactor: rate.clamp(0.0, 1.0),
-                    child: Container(decoration: AppGradients.progressBarDecoration(gradient)),
+                    child: Container(
+                      decoration: AppGradients.progressBarDecoration(gradient),
+                    ),
                   ),
                 ],
               ),
