@@ -30,4 +30,4 @@ All app data is stored locally on your device using local database storage. If y
 We may update this Privacy Policy from time to time. Changes will be reflected with an updated "Last updated" date.
 
 ### 7. Contact Us
-If you have any questions about this Privacy Policy, contact us at: **[Your Email]**
+If you have any questions about this Privacy Policy, contact us at: **habitquest63@gmail.com**

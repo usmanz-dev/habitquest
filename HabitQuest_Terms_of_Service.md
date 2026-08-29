@@ -26,4 +26,4 @@ The app is provided without warranties of any kind. We are not liable for any da
 We may update the app or these Terms at any time. Continued use of the app after changes constitutes acceptance of the updated Terms.
 
 ### 8. Contact Us
-For any questions regarding these Terms, contact us at: **[Your Email]**
+For any questions regarding these Terms, contact us at: **habitquest63@gmail.com**

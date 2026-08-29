@@ -4,8 +4,7 @@ import '../theme/app_theme.dart';
 
 /// Privacy Policy Page (HabitQuest_PRD.md §7 screen 15, §13). Content
 /// mirrors HabitQuest_Privacy_Policy.md — update that file and this screen
-/// together if the policy changes. "[Your Email]" is still a placeholder;
-/// fill it in once a support address is chosen.
+/// together if the policy changes.
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
@@ -85,7 +84,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 title: '7. Contact Us',
                 body:
                     'If you have any questions about this Privacy Policy, contact us at: '
-                    '[Your Email]',
+                    'habitquest63@gmail.com',
               ),
             ],
           ),

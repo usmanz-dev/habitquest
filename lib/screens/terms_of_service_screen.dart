@@ -4,8 +4,7 @@ import '../theme/app_theme.dart';
 
 /// Terms of Service Page (HabitQuest_PRD.md §7 screen 16, §13). Content
 /// mirrors HabitQuest_Terms_of_Service.md — update that file and this
-/// screen together if the terms change. "[Your Email]" is still a
-/// placeholder; fill it in once a support address is chosen.
+/// screen together if the terms change.
 class TermsOfServiceScreen extends StatelessWidget {
   const TermsOfServiceScreen({super.key});
 
@@ -79,7 +78,7 @@ class TermsOfServiceScreen extends StatelessWidget {
               ),
               const _Section(
                 title: '8. Contact Us',
-                body: 'For any questions regarding these Terms, contact us at: [Your Email]',
+                body: 'For any questions regarding these Terms, contact us at: habitquest63@gmail.com',
               ),
             ],
           ),
