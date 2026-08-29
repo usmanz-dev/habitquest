@@ -9,12 +9,47 @@ import '../services/settings_service.dart';
 import '../theme/app_theme.dart';
 
 const List<String> _kEmojiOptions = [
-  '⭐', '✅', '💧', '📚', '🏋️', '🧘', '🙏', '💊', '🩺', '🩸',
-  '😴', '🍎', '💰', '📈', '🤝', '✍️', '🎯', '🧹', '🚶', '🏃',
-  '🚴', '🎵', '🎨', '💻', '🧠', '❤️', '🌿', '☀️', '🔥', '📖',
+  '⭐',
+  '✅',
+  '💧',
+  '📚',
+  '🏋️',
+  '🧘',
+  '🙏',
+  '💊',
+  '🩺',
+  '🩸',
+  '😴',
+  '🍎',
+  '💰',
+  '📈',
+  '🤝',
+  '✍️',
+  '🎯',
+  '🧹',
+  '🚶',
+  '🏃',
+  '🚴',
+  '🎵',
+  '🎨',
+  '💻',
+  '🧠',
+  '❤️',
+  '🌿',
+  '☀️',
+  '🔥',
+  '📖',
 ];
 
-const List<String> _kWeekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const List<String> _kWeekdayLabels = [
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+  'Sun',
+];
 
 /// Custom habit builder (HabitQuest_PRD.md §4.3) — creates a new habit, or
 /// edits [existingHabit] in place, writing to the Isar Habit collection.
@@ -37,7 +72,19 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
   late final TextEditingController _durationCountController;
 
   late TrackingType _trackingType;
-  late FrequencyType _frequencyType;
+
+  /// Whether this habit has a fixed end date (a "Duration" challenge) or
+  /// keeps going indefinitely. Decoupled from [_recurrenceType] in the UI —
+  /// "how long" and "how often" are two separate questions to the user, even
+  /// though [Habit.frequencyType] only stores one of the two at a time
+  /// (see [_save]).
+  late bool _hasEndDate;
+
+  /// How often the habit repeats when [_hasEndDate] is false. Preserved
+  /// even while [_hasEndDate] is true, so flipping back to "Keep it going"
+  /// doesn't lose the user's earlier choice.
+  late FrequencyType _recurrenceType;
+
   late HabitCategory _category;
   late String _icon;
   late Set<int> _specificDays;
@@ -54,7 +101,10 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
     final h = widget.existingHabit;
     _nameController = TextEditingController(text: h?.name ?? '');
     _trackingType = h?.trackingType ?? TrackingType.checkbox;
-    _frequencyType = h?.frequencyType ?? FrequencyType.daily;
+    _hasEndDate = h?.frequencyType == FrequencyType.duration;
+    _recurrenceType = (h != null && h.frequencyType != FrequencyType.duration)
+        ? h.frequencyType
+        : FrequencyType.daily;
     _category = h?.category ?? HabitCategory.custom;
     _icon = h?.icon ?? _kEmojiOptions.first;
     _specificDays = (h?.specificDays ?? const <int>[]).toSet();
@@ -84,21 +134,28 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
   }
 
   bool get _needsTrackingTarget =>
-      _trackingType == TrackingType.counter || _trackingType == TrackingType.timer;
+      _trackingType == TrackingType.counter ||
+      _trackingType == TrackingType.timer;
 
   bool get _needsWeeklyCount =>
-      _frequencyType == FrequencyType.timesPerWeek && !_needsTrackingTarget;
+      !_hasEndDate &&
+      _recurrenceType == FrequencyType.timesPerWeek &&
+      !_needsTrackingTarget;
 
   bool get _showTargetField => _needsTrackingTarget || _needsWeeklyCount;
 
   String get _targetFieldLabel => switch (_trackingType) {
-        TrackingType.counter when _needsTrackingTarget => 'Target count (e.g. 8 glasses)',
-        TrackingType.timer when _needsTrackingTarget => 'Duration (minutes)',
-        _ => 'Times per week',
-      };
+    TrackingType.counter when _needsTrackingTarget =>
+      'Target count (e.g. 8 glasses)',
+    TrackingType.timer when _needsTrackingTarget => 'Duration (minutes)',
+    _ => 'Times per week',
+  };
 
   Future<void> _pickReminderTime() async {
-    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
     if (picked == null) return;
     final formatted =
         '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
@@ -109,8 +166,6 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
     });
   }
 
-  bool get _isDuration => _frequencyType == FrequencyType.duration;
-
   Future<void> _pickStartDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -119,13 +174,18 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (picked == null) return;
-    setState(() => _startDate = DateTime(picked.year, picked.month, picked.day));
+    setState(
+      () => _startDate = DateTime(picked.year, picked.month, picked.day),
+    );
   }
 
   Future<void> _save() async {
     setState(() => _daysError = null);
     final formValid = _formKey.currentState?.validate() ?? false;
-    final daysValid = !(_frequencyType == FrequencyType.specificDays && _specificDays.isEmpty);
+    final daysValid =
+        !(!_hasEndDate &&
+            _recurrenceType == FrequencyType.specificDays &&
+            _specificDays.isEmpty);
     if (!daysValid) setState(() => _daysError = 'Pick at least one day');
     if (!formValid || !daysValid) return;
 
@@ -136,15 +196,21 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
     habit
       ..name = _nameController.text.trim()
       ..trackingType = _trackingType
-      ..targetValue = _showTargetField ? double.tryParse(_targetValueController.text) : null
-      ..frequencyType = _frequencyType
+      ..targetValue = _showTargetField
+          ? double.tryParse(_targetValueController.text)
+          : null
+      ..frequencyType = _hasEndDate ? FrequencyType.duration : _recurrenceType
       ..specificDays = (_specificDays.toList()..sort())
-      ..durationCount = _isDuration ? int.tryParse(_durationCountController.text) : null
+      ..durationCount = _hasEndDate
+          ? int.tryParse(_durationCountController.text)
+          : null
       ..durationUnit = _durationUnit
       ..reminderTimes = _reminderTimes
       ..icon = _icon
       ..category = _category
-      ..createdAt = _isDuration ? _startDate : (widget.existingHabit?.createdAt ?? DateTime.now());
+      ..createdAt = _hasEndDate
+          ? _startDate
+          : (widget.existingHabit?.createdAt ?? DateTime.now());
 
     if (widget.isEditing) {
       await db.updateHabit(habit);
@@ -168,7 +234,10 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: Text('Delete "${habit.name}"?', style: AppTypography.headingMedium),
+        title: Text(
+          'Delete "${habit.name}"?',
+          style: AppTypography.headingMedium,
+        ),
         content: Text(
           'This removes the habit and its reminders. Past progress stays in your stats.',
           style: AppTypography.bodyMedium,
@@ -224,7 +293,10 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
           if (widget.isEditing)
             IconButton(
               tooltip: 'Delete habit',
-              icon: Icon(Icons.delete_outline_rounded, color: AppColors.dangerEnd),
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.dangerEnd,
+              ),
               onPressed: _saving ? null : _delete,
             ),
           TextButton(
@@ -251,134 +323,91 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
                 controller: _nameController,
                 style: AppTypography.bodyLarge,
                 decoration: _fieldDecoration('e.g. Study for 30 minutes'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Enter a habit name' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Enter a habit name'
+                    : null,
               ),
               const SizedBox(height: 24),
-              _SectionLabel('Tracking type'),
+              _SectionLabel('How long will this run?'),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
+              Row(
                 children: [
-                  _OptionChip(
-                    label: 'Checkbox',
-                    icon: Icons.check_box_outlined,
-                    selected: _trackingType == TrackingType.checkbox,
-                    onTap: () => setState(() => _trackingType = TrackingType.checkbox),
+                  Expanded(
+                    child: _DurationModeCard(
+                      icon: Icons.all_inclusive_rounded,
+                      title: 'Keep it going',
+                      subtitle: 'No end date',
+                      selected: !_hasEndDate,
+                      onTap: () => setState(() => _hasEndDate = false),
+                    ),
                   ),
-                  _OptionChip(
-                    label: 'Counter',
-                    icon: Icons.exposure_plus_1_rounded,
-                    selected: _trackingType == TrackingType.counter,
-                    onTap: () => setState(() => _trackingType = TrackingType.counter),
-                  ),
-                  _OptionChip(
-                    label: 'Timer',
-                    icon: Icons.timer_outlined,
-                    selected: _trackingType == TrackingType.timer,
-                    onTap: () => setState(() => _trackingType = TrackingType.timer),
-                  ),
-                  _OptionChip(
-                    label: 'Value',
-                    icon: Icons.numbers_rounded,
-                    selected: _trackingType == TrackingType.value,
-                    onTap: () => setState(() => _trackingType = TrackingType.value),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _DurationModeCard(
+                      icon: Icons.event_repeat_rounded,
+                      title: 'Set a time limit',
+                      subtitle: 'Days / weeks / months',
+                      selected: _hasEndDate,
+                      onTap: () => setState(() => _hasEndDate = true),
+                    ),
                   ),
                 ],
               ),
-              if (_showTargetField) ...[
-                const SizedBox(height: 20),
-                TextFormField(
-                  key: ValueKey(_targetFieldLabel),
-                  controller: _targetValueController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: AppTypography.bodyLarge,
-                  decoration: _fieldDecoration(_targetFieldLabel),
-                  validator: (v) {
-                    final value = double.tryParse(v ?? '');
-                    if (value == null || value <= 0) return 'Enter a valid number';
-                    return null;
-                  },
-                ),
-              ],
-              const SizedBox(height: 24),
-              _SectionLabel('Frequency'),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _OptionChip(
-                    label: 'Daily',
-                    selected: _frequencyType == FrequencyType.daily,
-                    onTap: () => setState(() => _frequencyType = FrequencyType.daily),
-                  ),
-                  _OptionChip(
-                    label: 'Specific Days',
-                    selected: _frequencyType == FrequencyType.specificDays,
-                    onTap: () => setState(() => _frequencyType = FrequencyType.specificDays),
-                  ),
-                  _OptionChip(
-                    label: 'X / Week',
-                    selected: _frequencyType == FrequencyType.timesPerWeek,
-                    onTap: () => setState(() => _frequencyType = FrequencyType.timesPerWeek),
-                  ),
-                  _OptionChip(
-                    label: 'Multiple / Day',
-                    selected: _frequencyType == FrequencyType.multipleTimesPerDay,
-                    onTap: () =>
-                        setState(() => _frequencyType = FrequencyType.multipleTimesPerDay),
-                  ),
-                  _OptionChip(
-                    label: 'Duration',
-                    icon: Icons.event_repeat_rounded,
-                    selected: _isDuration,
-                    onTap: () => setState(() => _frequencyType = FrequencyType.duration),
-                  ),
-                ],
-              ),
-              if (_isDuration) ...[
+              if (_hasEndDate) ...[
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(AppRadius.card),
-                    border: Border.all(color: AppColors.purpleEnd.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: AppColors.purpleEnd.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'A fixed-length challenge — this habit gets its own '
-                        'day-by-day checklist on Home once you tap into it.',
+                        'Starts on'.toUpperCase(),
                         style: AppTypography.caption,
                       ),
-                      const SizedBox(height: 16),
-                      Text('Starts on'.toUpperCase(), style: AppTypography.caption),
                       const SizedBox(height: 8),
                       GestureDetector(
                         onTap: _pickStartDate,
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.background,
                             borderRadius: BorderRadius.circular(AppRadius.card),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.12),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.event_rounded, size: 18, color: AppColors.purpleEnd),
+                              Icon(
+                                Icons.event_rounded,
+                                size: 18,
+                                color: AppColors.purpleEnd,
+                              ),
                               const SizedBox(width: 10),
-                              Text(_formatStartDate(_startDate), style: AppTypography.bodyLarge),
+                              Text(
+                                _formatStartDate(_startDate),
+                                style: AppTypography.bodyLarge,
+                              ),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text('Runs for'.toUpperCase(), style: AppTypography.caption),
+                      Text(
+                        'Runs for'.toUpperCase(),
+                        style: AppTypography.caption,
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,9 +421,11 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
                               decoration: _fieldDecoration('e.g. 30'),
                               onChanged: (_) => setState(() {}),
                               validator: (v) {
-                                if (!_isDuration) return null;
+                                if (!_hasEndDate) return null;
                                 final value = int.tryParse(v ?? '');
-                                if (value == null || value <= 0) return 'Invalid';
+                                if (value == null || value <= 0) {
+                                  return 'Invalid';
+                                }
                                 return null;
                               },
                             ),
@@ -409,7 +440,8 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
                                   _OptionChip(
                                     label: _durationUnitLabel(unit),
                                     selected: _durationUnit == unit,
-                                    onTap: () => setState(() => _durationUnit = unit),
+                                    onTap: () =>
+                                        setState(() => _durationUnit = unit),
                                   ),
                               ],
                             ),
@@ -420,7 +452,11 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
                         const SizedBox(height: 14),
                         Row(
                           children: [
-                            Icon(Icons.flag_rounded, size: 16, color: AppColors.amberStart),
+                            Icon(
+                              Icons.flag_rounded,
+                              size: 16,
+                              color: AppColors.amberStart,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Ends on ${_formatStartDate(end)}',
@@ -432,30 +468,138 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
                           ],
                         ),
                       ],
+                      const SizedBox(height: 4),
+                      Text(
+                        "This habit gets its own day-by-day plan on Home once you tap into it.",
+                        style: AppTypography.caption,
+                      ),
                     ],
                   ),
                 ),
               ],
-              if (_frequencyType == FrequencyType.specificDays) ...[
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: List.generate(7, (i) {
-                    final weekday = i + 1; // DateTime.weekday: 1=Mon..7=Sun
-                    final selected = _specificDays.contains(weekday);
-                    return _OptionChip(
-                      label: _kWeekdayLabels[i],
-                      selected: selected,
-                      onTap: () => setState(() {
-                        selected ? _specificDays.remove(weekday) : _specificDays.add(weekday);
-                      }),
-                    );
-                  }),
+              const SizedBox(height: 24),
+              _SectionLabel('Tracking type'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _OptionChip(
+                    label: 'Checkbox',
+                    icon: Icons.check_box_outlined,
+                    selected: _trackingType == TrackingType.checkbox,
+                    onTap: () =>
+                        setState(() => _trackingType = TrackingType.checkbox),
+                  ),
+                  _OptionChip(
+                    label: 'Counter',
+                    icon: Icons.exposure_plus_1_rounded,
+                    selected: _trackingType == TrackingType.counter,
+                    onTap: () =>
+                        setState(() => _trackingType = TrackingType.counter),
+                  ),
+                  _OptionChip(
+                    label: 'Timer',
+                    icon: Icons.timer_outlined,
+                    selected: _trackingType == TrackingType.timer,
+                    onTap: () =>
+                        setState(() => _trackingType = TrackingType.timer),
+                  ),
+                  _OptionChip(
+                    label: 'Value',
+                    icon: Icons.numbers_rounded,
+                    selected: _trackingType == TrackingType.value,
+                    onTap: () =>
+                        setState(() => _trackingType = TrackingType.value),
+                  ),
+                ],
+              ),
+              if (_showTargetField) ...[
+                const SizedBox(height: 20),
+                TextFormField(
+                  key: ValueKey(_targetFieldLabel),
+                  controller: _targetValueController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: AppTypography.bodyLarge,
+                  decoration: _fieldDecoration(_targetFieldLabel),
+                  validator: (v) {
+                    final value = double.tryParse(v ?? '');
+                    if (value == null || value <= 0) {
+                      return 'Enter a valid number';
+                    }
+                    return null;
+                  },
                 ),
-                if (_daysError != null) ...[
-                  const SizedBox(height: 6),
-                  Text(_daysError!, style: AppTypography.caption.copyWith(color: AppColors.dangerEnd)),
+              ],
+              if (!_hasEndDate) ...[
+                const SizedBox(height: 24),
+                _SectionLabel('Repeats'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _OptionChip(
+                      label: 'Daily',
+                      selected: _recurrenceType == FrequencyType.daily,
+                      onTap: () =>
+                          setState(() => _recurrenceType = FrequencyType.daily),
+                    ),
+                    _OptionChip(
+                      label: 'Specific Days',
+                      selected: _recurrenceType == FrequencyType.specificDays,
+                      onTap: () => setState(
+                        () => _recurrenceType = FrequencyType.specificDays,
+                      ),
+                    ),
+                    _OptionChip(
+                      label: 'X / Week',
+                      selected: _recurrenceType == FrequencyType.timesPerWeek,
+                      onTap: () => setState(
+                        () => _recurrenceType = FrequencyType.timesPerWeek,
+                      ),
+                    ),
+                    _OptionChip(
+                      label: 'Multiple / Day',
+                      selected:
+                          _recurrenceType == FrequencyType.multipleTimesPerDay,
+                      onTap: () => setState(
+                        () =>
+                            _recurrenceType = FrequencyType.multipleTimesPerDay,
+                      ),
+                    ),
+                  ],
+                ),
+                if (_recurrenceType == FrequencyType.specificDays) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: List.generate(7, (i) {
+                      final weekday = i + 1; // DateTime.weekday: 1=Mon..7=Sun
+                      final selected = _specificDays.contains(weekday);
+                      return _OptionChip(
+                        label: _kWeekdayLabels[i],
+                        selected: selected,
+                        onTap: () => setState(() {
+                          selected
+                              ? _specificDays.remove(weekday)
+                              : _specificDays.add(weekday);
+                        }),
+                      );
+                    }),
+                  ),
+                  if (_daysError != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      _daysError!,
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.dangerEnd,
+                      ),
+                    ),
+                  ],
                 ],
               ],
               const SizedBox(height: 24),
@@ -470,20 +614,29 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
                       label: Text(time, style: AppTypography.bodyMedium),
                       backgroundColor: AppColors.surface,
                       deleteIconColor: AppColors.textSecondary,
-                      onDeleted: () => setState(() => _reminderTimes.remove(time)),
+                      onDeleted: () =>
+                          setState(() => _reminderTimes.remove(time)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.12),
+                        ),
                       ),
                     ),
                   ActionChip(
-                    avatar: const Icon(Icons.add_rounded, size: 18, color: AppColors.purpleEnd),
+                    avatar: const Icon(
+                      Icons.add_rounded,
+                      size: 18,
+                      color: AppColors.purpleEnd,
+                    ),
                     label: Text('Add time', style: AppTypography.bodyMedium),
                     backgroundColor: AppColors.surface,
                     onPressed: _pickReminderTime,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.12),
+                      ),
                     ),
                   ),
                 ],
@@ -504,10 +657,15 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: _icon == emoji ? AppGradients.primary : null,
+                          gradient: _icon == emoji
+                              ? AppGradients.primary
+                              : null,
                           color: _icon == emoji ? null : AppColors.surface,
                         ),
-                        child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                        child: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 20),
+                        ),
                       ),
                     ),
                 ],
@@ -545,32 +703,47 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
     return switch (_durationUnit) {
       DurationUnit.days => start.add(Duration(days: count - 1)),
       DurationUnit.weeks => start.add(Duration(days: count * 7 - 1)),
-      DurationUnit.months =>
-        DateTime(start.year, start.month + count, start.day).subtract(const Duration(days: 1)),
+      DurationUnit.months => DateTime(
+        start.year,
+        start.month + count,
+        start.day,
+      ).subtract(const Duration(days: 1)),
     };
   }
 
   static const List<String> _kMonthShort = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
-  String _formatStartDate(DateTime d) => '${d.day} ${_kMonthShort[d.month - 1]} ${d.year}';
+  String _formatStartDate(DateTime d) =>
+      '${d.day} ${_kMonthShort[d.month - 1]} ${d.year}';
 
   String _durationUnitLabel(DurationUnit u) => switch (u) {
-        DurationUnit.days => 'Days',
-        DurationUnit.weeks => 'Weeks',
-        DurationUnit.months => 'Months',
-      };
+    DurationUnit.days => 'Days',
+    DurationUnit.weeks => 'Weeks',
+    DurationUnit.months => 'Months',
+  };
 
   String _categoryLabel(HabitCategory c) => switch (c) {
-        HabitCategory.health => 'Health',
-        HabitCategory.fitness => 'Fitness',
-        HabitCategory.study => 'Study',
-        HabitCategory.business => 'Business',
-        HabitCategory.spiritual => 'Spiritual',
-        HabitCategory.personal => 'Personal',
-        HabitCategory.custom => 'Custom',
-      };
+    HabitCategory.health => 'Health',
+    HabitCategory.fitness => 'Fitness',
+    HabitCategory.study => 'Study',
+    HabitCategory.business => 'Business',
+    HabitCategory.spiritual => 'Spiritual',
+    HabitCategory.personal => 'Personal',
+    HabitCategory.custom => 'Custom',
+  };
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -581,6 +754,73 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text.toUpperCase(), style: AppTypography.caption);
+  }
+}
+
+/// One of the two big "How long will this run?" choice cards — bigger and
+/// more explicit than an [_OptionChip] since this is the first real decision
+/// in the form and needs to read clearly at a glance.
+class _DurationModeCard extends StatelessWidget {
+  const _DurationModeCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          gradient: selected ? AppGradients.primary : null,
+          color: selected ? null : AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(
+            color: selected
+                ? Colors.transparent
+                : Colors.white.withValues(alpha: 0.12),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: selected ? Colors.white : AppColors.purpleEnd,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: AppTypography.bodyLarge.copyWith(
+                color: selected ? Colors.white : AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: AppTypography.caption.copyWith(
+                color: selected
+                    ? Colors.white.withValues(alpha: 0.85)
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -609,20 +849,29 @@ class _OptionChip extends StatelessWidget {
           color: selected ? null : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? Colors.transparent : Colors.white.withValues(alpha: 0.12),
+            color: selected
+                ? Colors.transparent
+                : Colors.white.withValues(alpha: 0.12),
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 16, color: selected ? Colors.white : AppColors.textSecondary),
+              Icon(
+                icon,
+                size: 16,
+                color: selected ? Colors.white : AppColors.textSecondary,
+              ),
               const SizedBox(width: 6),
             ],
             Text(
               label,
               style: selected
-                  ? AppTypography.bodyMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w600)
+                  ? AppTypography.bodyMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    )
                   : AppTypography.bodyMedium,
             ),
           ],

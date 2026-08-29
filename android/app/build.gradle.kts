@@ -67,6 +67,16 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+
+            // Shrinks the release APK's Java/Kotlin host code and unused
+            // resources (does not touch the compiled Dart AOT binary, so
+            // this is safe for Flutter's reflection-free plugin model).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
