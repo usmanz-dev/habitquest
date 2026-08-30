@@ -10,9 +10,9 @@ import '../models/habit.dart';
 /// on-device via flutter_local_notifications, no server/push service.
 ///
 /// Two kinds of scheduled notification per habit:
-/// - **Reminder**: one per [Habit.reminderTimes] entry, fired exactly 1
-///   minute before that time, recurring (daily, or weekly on the habit's
-///   specific days). Set-and-forget once scheduled — only needs
+/// - **Reminder**: one per [Habit.reminderTimes] entry, fired
+///   [reminderLeadMinutes] before that time, recurring (daily, or weekly on
+///   the habit's specific days). Set-and-forget once scheduled — only needs
 ///   rescheduling when the habit itself changes.
 /// - **Last chance**: one per habit *per day*, fired later in the day
 ///   (see [lastChanceTime]) only if the habit is still incomplete. Local
@@ -26,7 +26,8 @@ class NotificationService {
 
   static final NotificationService instance = NotificationService._();
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
   static const String _channelId = 'habit_reminders';
@@ -36,9 +37,13 @@ class NotificationService {
   static const int lastChanceHour = 21;
   static const int lastChanceMinute = 0;
 
+  /// How long before a habit's set time its reminder notification fires.
+  static const int reminderLeadMinutes = 10;
+
   /// Root-level navigator, used so a notification tap can return to the
   /// Home Screen from anywhere in the app (§8: "tapping opens Home Screen").
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 
   Future<void> init() async {
     if (_initialized) return;
@@ -53,7 +58,10 @@ class NotificationService {
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
+    const initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
 
     await _plugin.initialize(
       settings: initSettings,
@@ -67,7 +75,9 @@ class NotificationService {
       importance: Importance.high,
     );
     await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
 
     _initialized = true;
@@ -82,31 +92,42 @@ class NotificationService {
   /// to fire at the precise minute rather than a batched/delayed window).
   Future<void> requestPermissions() async {
     final android = _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await android?.requestNotificationsPermission();
     await android?.requestExactAlarmsPermission();
 
     await _plugin
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
   NotificationDetails get _details => const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: 'Reminders for your HabitQuest habits',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(),
-      );
+    android: AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: 'Reminders for your HabitQuest habits',
+      importance: Importance.high,
+      priority: Priority.high,
+    ),
+    iOS: DarwinNotificationDetails(),
+  );
 
   // ---- Scheduling helpers ----
 
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
     if (scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
@@ -121,21 +142,19 @@ class NotificationService {
     return scheduled;
   }
 
-  /// Parses an "HH:mm" reminder time and returns (hour, minute) shifted
-  /// 1 minute earlier — the reminder fires *before* the habit's set time
-  /// (HabitQuest_PRD.md §8).
-  (int, int) _oneMinuteBefore(String hhmm) {
+  /// Parses an "HH:mm" habit time and returns (hour, minute) shifted
+  /// [reminderLeadMinutes] earlier — the reminder fires *before* the habit's
+  /// set time (HabitQuest_PRD.md §8), giving the user a heads-up to get ready.
+  (int, int) _leadTimeFor(String hhmm) {
     final parts = hhmm.split(':');
-    var hour = int.parse(parts[0]);
-    var minute = int.parse(parts[1]) - 1;
-    if (minute < 0) {
-      minute += 60;
-      hour = (hour - 1 + 24) % 24;
-    }
-    return (hour, minute);
+    final totalMinutes =
+        int.parse(parts[0]) * 60 + int.parse(parts[1]) - reminderLeadMinutes;
+    final wrapped = (totalMinutes % (24 * 60) + 24 * 60) % (24 * 60);
+    return (wrapped ~/ 60, wrapped % 60);
   }
 
-  int _idFor(int habitId, int a, int b) => Object.hash(habitId, a, b) & 0x7fffffff;
+  int _idFor(int habitId, int a, int b) =>
+      Object.hash(habitId, a, b) & 0x7fffffff;
 
   // ---- Reminders (per habit's reminderTimes) ----
 
@@ -146,12 +165,13 @@ class NotificationService {
     await cancelRemindersForHabit(habit.id);
 
     for (var i = 0; i < habit.reminderTimes.length; i++) {
-      final (hour, minute) = _oneMinuteBefore(habit.reminderTimes[i]);
+      final (hour, minute) = _leadTimeFor(habit.reminderTimes[i]);
       final payload = 'reminder:${habit.id}';
-      final title = habit.name;
-      final body = 'Coming up in 1 minute — "${habit.name}"';
+      final title = 'Get ready!';
+      final body = '"${habit.name}" starts in $reminderLeadMinutes minutes.';
 
-      if (habit.frequencyType == FrequencyType.specificDays && habit.specificDays.isNotEmpty) {
+      if (habit.frequencyType == FrequencyType.specificDays &&
+          habit.specificDays.isNotEmpty) {
         for (final weekday in habit.specificDays) {
           await _plugin.zonedSchedule(
             id: _idFor(habit.id, i, weekday),
@@ -199,7 +219,10 @@ class NotificationService {
   /// completed yet and the time hasn't already passed; cancels it if the
   /// habit is already completed. Call whenever the day's habit list (and
   /// completion state) is refreshed.
-  Future<void> scheduleOrCancelLastChance(Habit habit, {required bool completedToday}) async {
+  Future<void> scheduleOrCancelLastChance(
+    Habit habit, {
+    required bool completedToday,
+  }) async {
     final id = _lastChanceId(habit.id);
     if (completedToday) {
       await _plugin.cancel(id: id);
@@ -207,7 +230,14 @@ class NotificationService {
     }
 
     final now = tz.TZDateTime.now(tz.local);
-    final today = tz.TZDateTime(tz.local, now.year, now.month, now.day, lastChanceHour, lastChanceMinute);
+    final today = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      lastChanceHour,
+      lastChanceMinute,
+    );
     if (today.isBefore(now)) {
       // Already past today's last-chance time — nothing to schedule until
       // the next refresh picks a future day.
@@ -227,7 +257,8 @@ class NotificationService {
 
   /// Cancels today's last-chance notification the moment [habitId] is
   /// completed, so it doesn't fire later even though it was scheduled.
-  Future<void> cancelLastChance(int habitId) => _plugin.cancel(id: _lastChanceId(habitId));
+  Future<void> cancelLastChance(int habitId) =>
+      _plugin.cancel(id: _lastChanceId(habitId));
 
   // ---- Delete ----
 

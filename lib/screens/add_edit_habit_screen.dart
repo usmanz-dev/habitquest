@@ -604,6 +604,13 @@ class _AddEditHabitScreenState extends ConsumerState<AddEditHabitScreen> {
               ],
               const SizedBox(height: 24),
               _SectionLabel('Reminders (optional)'),
+              const SizedBox(height: 4),
+              Text(
+                "Pick what time you do this habit — we'll notify you "
+                '${NotificationService.reminderLeadMinutes} minutes before '
+                "so you're ready.",
+                style: AppTypography.caption,
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
