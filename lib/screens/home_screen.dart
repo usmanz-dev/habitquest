@@ -116,7 +116,12 @@ class HomeScreen extends ConsumerWidget {
             await ref.read(userProgressProvider.notifier).refresh();
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            // Extra bottom padding (beyond the usual 24) so the last habit
+            // card always scrolls clear of the floating "Add Habit" button
+            // instead of ending up underneath it — the FAB floats over
+            // scrollable content by default and doesn't reserve space on
+            // its own.
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
             children: [
               GestureDetector(
                 onTap: () => Navigator.of(context).push(
